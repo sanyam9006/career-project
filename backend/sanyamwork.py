@@ -12,7 +12,7 @@ Original file is located at
 
 import pandas as pd
 import numpy as np
-from transformers import pipeline
+import google.generativeai as genai
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 import re
@@ -30,88 +30,101 @@ class PersonalityAnalyzer:
     """NLP-based personality and interest analyzer"""
 
     def __init__(self):
-        # Initialize sentiment analyzer
+        # Initialize sentiment analyzer (keep local for speed/free polarity)
         self.sia = SentimentIntensityAnalyzer()
-        # Initialize zero-shot classification for interests only if not on Render (due to 512MB RAM limit)
-        self.is_render = os.environ.get('RENDER') == 'true'
-        if not self.is_render:
-            self.classifier = pipeline("zero-shot-classification", model="MoritzLaurer/mDeBERTa-v3-base-mnli-xnli")
+        
+        # Initialize Google Gemini
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            print("WARNING: GEMINI_API_KEY environment variable not set. Essay analysis will fail.")
         else:
-            self.classifier = None
-        # Career categories for classification
+            genai.configure(api_key=api_key)
+            
+        # Optional: You can specify a particular Gemini model, like gemini-pro
+        self.generation_config = {
+            "temperature": 0.4, # Lower temperature for more consistent, structured JSON responses
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 8192,
+            "response_mime_type": "application/json",
+        }
+            
+        # Career categories and traits still useful for reference/prompting
         self.career_categories = [
             "Technology and Engineering", "Healthcare and Medicine", "Business and Finance",
             "Arts and Design", "Education and Teaching", "Science and Research",
             "Law and Public Service", "Media and Communication", "Social Work and Counseling"
         ]
-        # Personality basic traits for linguistic processing (multilingual compatible)
         self.personality_traits = [
             "analytical", "creative", "social", "leadership", "detail oriented", "adaptable"
         ]
 
-    def analyze_text_interests(self, text: str) -> Dict:
-        """Analyze user's interests from their text input"""
-        if self.is_render:
-            return {
-                "Technology and Engineering": 0.45,
-                "Business and Finance": 0.30,
-                "Arts and Design": 0.25
-            }
-        try:
-            result = self.classifier(text, self.career_categories)
-            top_interests = {}
-            for i in range(min(3, len(result['labels']))):
-                top_interests[result['labels'][i]] = round(result['scores'][i], 3)
-            return top_interests
-        except Exception as e:
-            print(f"Warning: Zero-shot classification failed. {e}")
-            # Fallback for when the model fails or is unavailable
-            return {
-                "Technology and Engineering": 0.45,
-                "Business and Finance": 0.30,
-                "Arts and Design": 0.25
-            }
-
-    def extract_personality_traits(self, text: str) -> Dict:
-        """Extract personality traits from text using zero-shot classification for multilingual support"""
-        if self.is_render:
-            return {'adaptable': 0.60, 'social': 0.50, 'analytical': 0.45}
-        try:
-            result = self.classifier(text, self.personality_traits)
-            trait_scores = {}
-            for i in range(len(result['labels'])):
-                # Normalize keys (e.g. "detail oriented" -> "detail_oriented")
-                key = result['labels'][i].replace(" ", "_")
-                trait_scores[key] = round(result['scores'][i], 3)
-            
-            # Normalize to strong traits
-            if trait_scores:
-                max_score = max(trait_scores.values())
-                if max_score > 0:
-                    trait_scores = {k: min(1.0, round((v / max_score) * 1.2, 2)) for k, v in trait_scores.items() if (v / max_score) > 0.4}
-            else:
-                trait_scores = {'adaptable': 0.60, 'social': 0.50}
-                
-            return trait_scores
-        except Exception as e:
-            print(f"Warning: Zero-shot trait classification failed. {e}")
-            return {'adaptable': 0.60, 'collaborative': 0.50}
-
     def analyze_career_essay(self, essay: str) -> Dict:
-        """Complete analysis of career essay/statement"""
+        """Complete analysis of career essay/statement using LLM"""
         if not essay or len(essay.strip()) == 0:
             raise ValueError("Essay text cannot be empty.")
             
+        # Keep basic sentiment local - it's fast and easy
         sentiment = self.sia.polarity_scores(essay)
-        interests = self.analyze_text_interests(essay)
-        traits = self.extract_personality_traits(essay)
-        recommendations = self.generate_recommendations(interests, traits)
-        return {
-            'sentiment': {'positive': round(sentiment['pos'], 2), 'neutral': round(sentiment['neu'], 2), 'negative': round(sentiment['neg'], 2)},
-            'top_interests': interests,
-            'personality_traits': traits,
-            'career_recommendations': recommendations
-        }
+        
+        # If API key is missing, return fallback
+        if not os.environ.get("GEMINI_API_KEY"):
+             return {
+                'sentiment': {'positive': round(sentiment['pos'], 2), 'neutral': round(sentiment['neu'], 2), 'negative': round(sentiment['neg'], 2)},
+                'top_interests': {"Technology and Engineering": 0.6, "Business and Finance": 0.4},
+                'personality_traits': {'analytical': 0.8, 'adaptable': 0.6},
+                'career_recommendations': ["Software Developer", "Data Scientist", "Financial Analyst"]
+            }
+
+        try:
+            model = genai.GenerativeModel(
+                model_name="gemini-1.5-flash", # Use standard fast model
+                generation_config=self.generation_config
+            )
+
+            prompt = f"""
+            Analyze the following essay written by a user looking for career guidance.
+            Based strictly on the content and tone of their essay, generate a JSON response with exactly three keys:
+            
+            1. "top_interests": An object mapping the top 2-3 most relevant career categories (from the list below) to a confidence score between 0.0 and 1.0.
+            2. "personality_traits": An object mapping the top 3-4 detected personality traits to a confidence score between 0.0 and 1.0 (e.g. {{"analytical": 0.85, "creative": 0.70}}). Use lowercase with underscores for multi-word traits (e.g., detail_oriented).
+            3. "career_recommendations": An array of exactly 5 specific job titles that perfectly suit the user's analyzed interests and traits.
+            
+            Valid Career Categories: {', '.join(self.career_categories)}
+            Suggested Personality Traits (you can use others if highly relevant): {', '.join(self.personality_traits)}
+            
+            Essay to Analyze:
+            "{essay}"
+            """
+
+            response = model.generate_content(prompt)
+            # Since we requested application/json, response.text should be parseable JSON
+            json_response = response.text
+            
+            # Sometimes models wrap JSON in markdown blocks even when told not to, so we clean it.
+            if json_response.startswith("```json"):
+                json_response = json_response[7:-3]
+            elif json_response.startswith("```"):
+                json_response = json_response[3:-3]
+                
+            analysis_data = json.loads(json_response.strip())
+            
+            return {
+                'sentiment': {'positive': round(sentiment['pos'], 2), 'neutral': round(sentiment['neu'], 2), 'negative': round(sentiment['neg'], 2)},
+                'top_interests': analysis_data.get('top_interests', {}),
+                'personality_traits': analysis_data.get('personality_traits', {}),
+                'career_recommendations': analysis_data.get('career_recommendations', [])
+            }
+
+        except Exception as e:
+            print(f"Error calling Gemini API: {e}")
+            # Fallback if Gemini fails
+            return {
+                'sentiment': {'positive': round(sentiment['pos'], 2), 'neutral': round(sentiment['neu'], 2), 'negative': round(sentiment['neg'], 2)},
+                'top_interests': {"Technology and Engineering": 0.5},
+                'personality_traits': {'adaptable': 0.5},
+                'career_recommendations': ["General Consultant"]
+            }
 
     def generate_recommendations(self, interests: Dict, traits: Dict) -> List:
         """Generate career recommendations based on analysis"""

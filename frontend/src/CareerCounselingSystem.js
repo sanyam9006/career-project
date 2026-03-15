@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Activity, ThumbsUp, ThumbsDown, Edit3, MapPin } from "lucide-react";
+import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Activity, ThumbsUp, ThumbsDown, Edit3, MapPin, MessageSquare, Send } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
 
@@ -104,6 +104,8 @@ const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, 
 const CareerExplorer = ({ isLoading, careerDatabase, userLocation }) => {
   const [marketData, setMarketData] = useState(null);
   const [isMarketLoading, setIsMarketLoading] = useState(false);
+  const [roadmapData, setRoadmapData] = useState(null);
+  const [isRoadmapLoading, setIsRoadmapLoading] = useState(false);
 
   const viewMarketInsights = async (careerTitle) => {
     setIsMarketLoading(true);
@@ -116,6 +118,24 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation }) => {
       console.error(e);
     }
     setIsMarketLoading(false);
+  };
+
+  const generateAIRoadmap = async (careerTitle) => {
+    setIsRoadmapLoading(true);
+    setRoadmapData({ career: careerTitle, content: null });
+    try {
+      const res = await fetch(`${API_URL}/generate-roadmap`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ career: careerTitle, location: userLocation })
+      });
+      const data = await res.json();
+      setRoadmapData({ career: careerTitle, content: data.roadmap });
+    } catch (e) {
+      console.error(e);
+      setRoadmapData({ career: careerTitle, content: "Error generating roadmap. Please try again later." });
+    }
+    setIsRoadmapLoading(false);
   };
 
   return (
@@ -147,9 +167,14 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation }) => {
                       <div className="text-sm text-purple-900">{career.regional_education[userLocation]}</div>
                     </div>
                   )}
-                  <button onClick={() => viewMarketInsights(career.title)} className="mt-4 w-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 mr-2" /> Live Market Data
-                  </button>
+                  <div className="flex gap-2 mt-4">
+                    <button onClick={() => viewMarketInsights(career.title)} className="flex-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4 mr-1" /> Market Data
+                    </button>
+                    <button onClick={() => generateAIRoadmap(career.title)} className="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center">
+                      <Brain className="w-4 h-4 mr-1" /> AI Roadmap
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -199,6 +224,42 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation }) => {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Roadmap Modal */}
+      {(isRoadmapLoading || roadmapData) && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-4 border-b flex justify-between items-center bg-purple-600 text-white">
+              <h2 className="text-xl font-bold flex items-center"><Brain className="w-6 h-6 mr-2" /> AI Roadmap: {roadmapData ? roadmapData.career : 'Loading...'}</h2>
+              <button onClick={() => { setRoadmapData(null); setIsRoadmapLoading(false); }} className="hover:bg-purple-700 p-1 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
+            </div>
+            <div className="p-6 overflow-y-auto w-full">
+              {isRoadmapLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mb-4"></div>
+                  <p className="text-purple-600 font-medium">Gemini AI is generating your personalized 12-month roadmap...</p>
+                </div>
+              ) : roadmapData && roadmapData.content && (
+                <div className="whitespace-pre-wrap font-sans text-gray-800 leading-relaxed custom-markdown-styles">
+                  {/* Basic markdown parsing for bold and headers */}
+                  {roadmapData.content.split('\\n').map((line, i) => {
+                    if (line.startsWith('### ')) return <h4 key={i} className="text-lg font-bold text-gray-900 mt-4 mb-2">{line.replace('### ', '')}</h4>;
+                    if (line.startsWith('## ')) return <h3 key={i} className="text-xl font-bold text-purple-800 mt-6 mb-3 border-b pb-1">{line.replace('## ', '')}</h3>;
+                    if (line.startsWith('# ')) return <h2 key={i} className="text-2xl font-bold text-gray-900 mt-2 mb-4">{line.replace('# ', '')}</h2>;
+                    if (line.startsWith('* **') || line.startsWith('- **')) {
+                      const parts = line.split('**');
+                      return <li key={i} className="ml-4 mb-1"><strong>{parts[1]}</strong>{parts.slice(2).join('**')}</li>;
+                    }
+                    if (line.startsWith('* ') || line.startsWith('- ')) return <li key={i} className="ml-4 mb-1">{line.substring(2)}</li>;
+                    if (line.trim() === '') return <br key={i} />;
+                    return <p key={i} className="mb-2">{line.split('**').map((part, index) => index % 2 === 1 ? <strong key={index}>{part}</strong> : part)}</p>;
+                  })}
                 </div>
               )}
             </div>
@@ -427,6 +488,50 @@ const CareerCounselingSystem = () => {
   const [careerDatabase, setCareerDatabase] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
+  // AI Coach State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { role: 'model', content: "Hi there! I'm CareerAI, your personal counselor. What kind of career advice are you looking for today?" }
+  ]);
+  const [currentChatInput, setCurrentChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatEndRef = React.useRef(null);
+
+  useEffect(() => {
+    if (isChatOpen && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, isChatOpen]);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!currentChatInput.trim() || isChatLoading) return;
+    
+    const userMessage = { role: 'user', content: currentChatInput };
+    const newContext = [...chatMessages, userMessage];
+    setChatMessages(newContext);
+    setCurrentChatInput("");
+    setIsChatLoading(true);
+
+    try {
+      const res = await fetch(`${API_URL}/chat-coach`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newContext })
+      });
+      const data = await res.json();
+      if (data.reply) {
+        setChatMessages([...newContext, { role: 'model', content: data.reply }]);
+      } else {
+        setChatMessages([...newContext, { role: 'model', content: "I'm having trouble connecting to my brain right now. Please try again later." }]);
+      }
+    } catch (e) {
+      console.error(e);
+      setChatMessages([...newContext, { role: 'model', content: "An error occurred while sending your message." }]);
+    }
+    setIsChatLoading(false);
+  };
+
   // Fetch aptitude questions and career data on component mount
   useEffect(() => {
     const fetchData = async () => {
@@ -537,6 +642,81 @@ const CareerCounselingSystem = () => {
           </div>
         </div>
         {renderPage()}
+      </div>
+
+      {/* Floating AI Coach Chat Widget */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {!isChatOpen && (
+          <button 
+            onClick={() => setIsChatOpen(true)}
+            className="bg-purple-600 hover:bg-purple-700 text-white rounded-full p-4 shadow-xl transition-transform hover:scale-105 flex items-center justify-center animate-bounce"
+          >
+            <MessageSquare className="w-8 h-8" />
+          </button>
+        )}
+        
+        {isChatOpen && (
+          <div className="bg-white rounded-2xl shadow-2xl border border-purple-100 flex flex-col w-[350px] sm:w-[400px] h-[500px] max-h-[80vh] animate-in fade-in slide-in-from-bottom-5">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 rounded-t-2xl flex justify-between items-center shadow-md z-10">
+              <div className="flex items-center">
+                <Brain className="w-6 h-6 mr-2" />
+                <h3 className="font-bold">CareerAI Coach</h3>
+              </div>
+              <button onClick={() => setIsChatOpen(false)} className="hover:bg-white/20 p-1 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+              {chatMessages.map((msg, index) => (
+                <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] rounded-2xl p-3 text-sm shadow-sm ${msg.role === 'user' ? 'bg-purple-600 text-white rounded-tr-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'}`}>
+                     {/* Basic markdown parsing for chat */}
+                     {msg.content.split('\\n').map((line, i) => {
+                        if (line.startsWith('* **') || line.startsWith('- **')) {
+                           const parts = line.split('**');
+                           return <li key={i} className="ml-4 truncate text-wrap pt-1"><strong>{parts[1]}</strong>{parts.slice(2).join('**')}</li>;
+                        }
+                        if (line.trim() === '') return <div key={i} className="h-1"></div>;
+                        return <p key={i} className="pt-1">{line.split('**').map((part, idx) => idx % 2 === 1 ? <strong key={idx}>{part}</strong> : part)}</p>;
+                     })}
+                  </div>
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white border text-gray-800 rounded-2xl rounded-tl-sm p-4 shadow-sm flex space-x-2 items-center">
+                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce delay-75"></div>
+                    <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce delay-150"></div>
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+            
+            {/* Input Form */}
+            <form onSubmit={handleSendMessage} className="p-3 bg-white border-t rounded-b-2xl flex items-center shadow-inner">
+              <input
+                type="text"
+                placeholder="Ask for career advice..."
+                className="flex-1 bg-gray-100 rounded-full py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm border-transparent"
+                value={currentChatInput}
+                onChange={(e) => setCurrentChatInput(e.target.value)}
+                disabled={isChatLoading}
+              />
+              <button 
+                type="submit" 
+                disabled={!currentChatInput.trim() || isChatLoading}
+                className="ml-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-2.5 flex-shrink-0 transition-colors disabled:opacity-50 disabled:bg-gray-400"
+              >
+                <Send className="w-4 h-4 ml-0.5" />
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

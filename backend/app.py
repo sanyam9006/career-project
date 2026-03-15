@@ -14,6 +14,13 @@ from agarwalwork import DatabaseManager, AptitudeTestManager
 from sanyamwork import PersonalityAnalyzer
 import json
 import random
+import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+load_dotenv()
+if "GEMINI_API_KEY" in os.environ:
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
 # --- INITIALIZATION ---
 app = Flask(__name__)
@@ -120,6 +127,66 @@ def analyze_essay():
         return jsonify(analysis)
     except Exception as e:
         db_manager.log_error(str(e), endpoint='/analyze-essay')
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/generate-roadmap', methods=['POST'])
+def generate_roadmap():
+    """Endpoint to generate an AI Career Roadmap using Gemini"""
+    try:
+        data = request.json
+        career_title = data.get('career')
+        user_location = data.get('location', 'Global')
+        
+        if not career_title:
+            return jsonify({"error": "Career title is required"}), 400
+            
+        if not os.environ.get("GEMINI_API_KEY"):
+            return jsonify({"roadmap": f"# Roadmap for {career_title}\\n\\nPlease add a Google Gemini API Key to see the AI generated roadmap."})
+            
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        prompt = f"Create a step-by-step 12-month career roadmap for a user who wants to become a '{career_title}'. Keep the location context of '{user_location}' in mind for realistic advice. Format the response beautifully in Markdown with sections for Months 1-3, 4-6, and 7-12."
+        
+        response = model.generate_content(prompt)
+        return jsonify({"roadmap": response.text})
+    except Exception as e:
+        db_manager.log_error(str(e), endpoint='/generate-roadmap')
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/chat-coach', methods=['POST'])
+def chat_coach():
+    """Endpoint for the Interactive AI Career Coach Chatbot"""
+    try:
+        data = request.json
+        messages = data.get('messages', [])
+        
+        if not messages:
+             return jsonify({"error": "Messages array is required"}), 400
+             
+        if not os.environ.get("GEMINI_API_KEY"):
+            return jsonify({"reply": "I am the AI Career Coach, but my Gemini API key is missing!"})
+
+        # Format history for Gemini API (uses 'user' and 'model' roles)
+        formatted_history = []
+        for msg in messages[:-1]: # All but the latest
+            role = "user" if msg['role'] == "user" else "model"
+            formatted_history.append({"role": role, "parts": [msg['content']]})
+            
+        latest_message = messages[-1]['content']
+        
+        # System instructions given via history or context
+        system_instruction = "You are a professional, encouraging, and highly knowledgeable Career Counselor named CareerAI Coach. Provide concise, actionable advice for job seekers and career switchers."
+        
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction=system_instruction
+        )
+        
+        chat = model.start_chat(history=formatted_history)
+        response = chat.send_message(latest_message)
+        
+        return jsonify({"reply": response.text})
+    except Exception as e:
+        db_manager.log_error(str(e), endpoint='/chat-coach')
         return jsonify({"error": str(e)}), 500
 
 @app.route('/recommendations/feedback', methods=['POST'])
