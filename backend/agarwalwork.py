@@ -30,7 +30,7 @@ class DatabaseManager:
 
     def connect(self):
         """Establish database connection"""
-        self.conn = sqlite3.connect(self.db_name)
+        self.conn = sqlite3.connect(self.db_name, check_same_thread=False)
         self.cursor = self.conn.cursor()
 
     def create_tables(self):
@@ -118,6 +118,52 @@ class DatabaseManager:
             )
         ''')
 
+        # Admin Users table
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS admin_users (
+                admin_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Activity Logs table
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                action TEXT NOT NULL,
+                details TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Error Logs table
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS error_logs (
+                error_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                error_message TEXT NOT NULL,
+                stack_trace TEXT,
+                endpoint TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Recommendation Feedback table
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS recommendation_feedback (
+                feedback_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                recommendation_id INTEGER,
+                feedback_type TEXT NOT NULL, 
+                details TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (user_id),
+                FOREIGN KEY (recommendation_id) REFERENCES career_recommendations (recommendation_id)
+            )
+        ''')
+
         self.conn.commit()
 
     def hash_password(self, password: str) -> str:
@@ -151,6 +197,7 @@ class DatabaseManager:
 
         result = self.cursor.fetchone()
         if result:
+            self.log_activity(result[0], 'USER_LOGIN', 'User logged in successfully')
             return {
                 'user_id': result[0],
                 'username': result[1],
@@ -158,6 +205,103 @@ class DatabaseManager:
                 'full_name': result[3]
             }
         return None
+
+    def authenticate_admin(self, username: str, password: str) -> bool:
+        """Authenticate an admin login and seed one if missing"""
+        self.cursor.execute("SELECT COUNT(*) FROM admin_users")
+        if self.cursor.fetchone()[0] == 0:
+            self.cursor.execute("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)", 
+                                ("admin", self.hash_password("admin123")))
+            self.conn.commit()
+            
+        password_hash = self.hash_password(password)
+        self.cursor.execute('SELECT admin_id FROM admin_users WHERE username = ? AND password_hash = ?', (username, password_hash))
+        result = self.cursor.fetchone()
+        if result:
+            self.log_activity(None, 'ADMIN_LOGIN', f'Admin {username} logged in')
+            return True
+        return False
+
+    def log_activity(self, user_id: Optional[int], action: str, details: str = None):
+        """Log a system activity"""
+        self.cursor.execute('''
+            INSERT INTO activity_logs (user_id, action, details)
+            VALUES (?, ?, ?)
+        ''', (user_id, action, details))
+        self.conn.commit()
+
+    def log_error(self, error_message: str, stack_trace: str = None, endpoint: str = None):
+        """Log a system error"""
+        self.cursor.execute('''
+            INSERT INTO error_logs (error_message, stack_trace, endpoint)
+            VALUES (?, ?, ?)
+        ''', (error_message, stack_trace, endpoint))
+        self.conn.commit()
+
+    def add_recommendation_feedback(self, user_id: int, recommendation_id: int, feedback_type: str, details: str = None):
+        """Store user feedback (upvote/downvote) on a recommendation"""
+        self.cursor.execute('''
+            INSERT INTO recommendation_feedback (user_id, recommendation_id, feedback_type, details)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, recommendation_id, feedback_type, details))
+        self.conn.commit()
+        self.log_activity(user_id, 'SUBMIT_FEEDBACK', f'{feedback_type} on recommendation #{recommendation_id}')
+
+    def get_dashboard_stats(self) -> Dict:
+        """Get high-level statistics for Admin Dashboard"""
+        self.cursor.execute("SELECT COUNT(*) FROM users")
+        total_users = self.cursor.fetchone()[0]
+        
+        self.cursor.execute("SELECT COUNT(*) FROM aptitude_tests")
+        total_tests = self.cursor.fetchone()[0]
+        
+        self.cursor.execute("SELECT COUNT(*) FROM error_logs")
+        total_errors = self.cursor.fetchone()[0]
+        
+        self.cursor.execute("SELECT test_type, AVG(score) FROM aptitude_tests GROUP BY test_type")
+        avg_scores = {row[0]: round(row[1], 2) for row in self.cursor.fetchall()}
+        
+        return {
+            'total_users': total_users,
+            'total_tests': total_tests,
+            'total_errors': total_errors,
+            'avg_scores': avg_scores
+        }
+        
+    def get_recent_activity(self, limit: int = 20) -> List[Dict]:
+        """Fetch latest activity logs"""
+        self.cursor.execute('''
+            SELECT log_id, user_id, action, details, timestamp
+            FROM activity_logs ORDER BY timestamp DESC LIMIT ?
+        ''', (limit,))
+        return [{'log_id': r[0], 'user_id': r[1], 'action': r[2], 'details': r[3], 'timestamp': r[4]} for r in self.cursor.fetchall()]
+
+    def get_all_users(self) -> List[Dict]:
+        """Fetch all users for Admin Panel"""
+        self.cursor.execute("SELECT user_id, username, email, full_name, age, created_at FROM users")
+        return [{'user_id': r[0], 'username': r[1], 'email': r[2], 'full_name': r[3], 'age': r[4], 'created_at': r[5]} for r in self.cursor.fetchall()]
+        
+    def get_all_careers(self) -> List[Dict]:
+        """Fetch all careers from database"""
+        self.cursor.execute("SELECT career_id, title, category, description, required_skills, salary_range, growth_prospects FROM career_profiles")
+        # Fallback to empty if DB not seeded
+        careers = [{'id': r[0], 'title': r[1], 'category': r[2], 'description': r[3], 'skills': r[4].split(',') if r[4] else [], 'salary': r[5], 'growth': r[6]} for r in self.cursor.fetchall()]
+        if not careers:
+            # Return a much more comprehensive sample data if DB is empty
+            return [
+                {'title': 'Software Developer', 'category': 'Technology', 'description': 'Builds tech applications and systems.', 'skills': ['Python', 'Java', 'Algorithms', 'Logic'], 'salary': '$80k-120k', 'growth': 'High', 'regional_education': {'USA': 'BS Computer Science, LeetCode', 'India': 'B.Tech CSE, GATE/JEE', 'UK': 'BSc Computer Science'}},
+                {'title': 'Data Scientist', 'category': 'Technology', 'description': 'Analyzes and models complex data.', 'skills': ['Math', 'Python', 'Analysis', 'Statistics'], 'salary': '$95k-140k', 'growth': 'High', 'regional_education': {'USA': 'MS Data Science', 'India': 'B.Tech/M.Tech Data Science (IIT/NIT)', 'UK': 'MSc Data Science'}},
+                {'title': 'Systems Architect', 'category': 'Technology', 'description': 'Designs IT infrastructure.', 'skills': ['Cloud', 'Design', 'Networking', 'Logic'], 'salary': '$110k-160k', 'growth': 'High', 'regional_education': {'USA': 'AWS Certified Solutions Architect', 'India': 'B.Tech + Cloud Certifications', 'UK': 'Cloud Certifications'}},
+                {'title': 'Content Writer', 'category': 'Media', 'description': 'Creates compelling articles and documents.', 'skills': ['Writing', 'Editing', 'Communication'], 'salary': '$50k-80k', 'growth': 'Stable', 'regional_education': {'USA': 'BA English/Journalism', 'India': 'BA/MA English Literature', 'UK': 'BA English'}},
+                {'title': 'Journalist', 'category': 'Media', 'description': 'Investigates and reports news stories.', 'skills': ['Investigation', 'Writing', 'Verbal'], 'salary': '$45k-85k', 'growth': 'Medium', 'regional_education': {'USA': 'BA Journalism', 'India': 'BJMC (Bachelor of Journalism)', 'UK': 'NCTJ Diploma'}},
+                {'title': 'Teacher', 'category': 'Education', 'description': 'Educates students in specific subjects.', 'skills': ['Communication', 'Patience', 'Empathy', 'Verbal'], 'salary': '$50k-85k', 'growth': 'Stable', 'regional_education': {'USA': 'Degree + State Teaching License', 'India': 'B.Ed (Bachelor of Education) + CTET', 'UK': 'PGCE + QTS'}},
+                {'title': 'Accountant', 'category': 'Finance', 'description': 'Manages financial records.', 'skills': ['Math', 'Numeracy', 'Detail-oriented'], 'salary': '$60k-90k', 'growth': 'Stable', 'regional_education': {'USA': 'CPA (Certified Public Accountant)', 'India': 'CA (Chartered Accountant)', 'UK': 'ACCA/CIMA'}},
+                {'title': 'Financial Analyst', 'category': 'Finance', 'description': 'Guides investment decisions.', 'skills': ['Analysis', 'Excel', 'Numeracy'], 'salary': '$75k-110k', 'growth': 'High', 'regional_education': {'USA': 'CFA Charterholder', 'India': 'MBA Finance / CFA', 'UK': 'CFA'}},
+                {'title': 'Graphic Designer', 'category': 'Arts', 'description': 'Creates visual graphics and branding.', 'skills': ['Creativity', 'Photoshop', 'Visualization'], 'salary': '$50k-90k', 'growth': 'Medium', 'regional_education': {'USA': 'BFA Graphic Design', 'India': 'B.Des (Bachelor of Design) or NID', 'UK': 'BA Graphic Design'}},
+                {'title': 'Doctor', 'category': 'Healthcare', 'description': 'Diagnoses and treats patients.', 'skills': ['Biology', 'Empathy', 'Problem Solving'], 'salary': '$150k-300k', 'growth': 'High', 'regional_education': {'USA': 'Pre-Med + MCAT + MD', 'India': 'NEET + MBBS', 'UK': 'UCAT/BMAT + MBChB'}},
+                {'title': 'Lawyer', 'category': 'Law', 'description': 'Advises and represents clients in legal matters.', 'skills': ['Argumentation', 'Research', 'Writing'], 'salary': '$90k-200k', 'growth': 'Stable', 'regional_education': {'USA': 'Pre-Law + LSAT + JD', 'India': 'CLAT + LLB', 'UK': 'LNAT + LLB + SQE'}},
+            ]
+        return careers
 
     def save_test_result(self, user_id: int, test_type: str, score: float) -> int:
         """Save aptitude test result"""
@@ -380,58 +524,75 @@ class AptitudeTestManager:
 
     def generate_career_recommendations(self, user_id: int,
                                       test_results: Dict) -> List[Dict]:
-        """Generate career recommendations based on test results"""
+        """Generate career recommendations based on test results with improved logic"""
 
         recommendations = []
         category_scores = test_results['category_scores']
 
-        # Career mapping based on aptitude strengths
+        # Advanced Career mapping matching aptitudes to job roles
         career_mapping = {
             'logical_reasoning': [
-                {'title': 'Software Developer', 'match': 0.9},
-                {'title': 'Data Analyst', 'match': 0.85},
-                {'title': 'Systems Analyst', 'match': 0.8}
+                {'title': 'Software Developer', 'weight': 0.95},
+                {'title': 'Data Scientist', 'weight': 0.90},
+                {'title': 'Systems Architect', 'weight': 0.85}
             ],
             'verbal_ability': [
-                {'title': 'Content Writer', 'match': 0.9},
-                {'title': 'Teacher', 'match': 0.85},
-                {'title': 'Journalist', 'match': 0.8}
+                {'title': 'Content Writer', 'weight': 0.95},
+                {'title': 'Teacher', 'weight': 0.90},
+                {'title': 'Journalist', 'weight': 0.85}
             ],
             'numerical_ability': [
-                {'title': 'Accountant', 'match': 0.9},
-                {'title': 'Financial Analyst', 'match': 0.85},
-                {'title': 'Statistician', 'match': 0.8}
+                {'title': 'Accountant', 'weight': 0.95},
+                {'title': 'Financial Analyst', 'weight': 0.90},
+                {'title': 'Data Scientist', 'weight': 0.80} # Overlapping skills
             ],
             'spatial_reasoning': [
-                {'title': 'Architect', 'match': 0.9},
-                {'title': 'Graphic Designer', 'match': 0.85},
-                {'title': 'Engineer', 'match': 0.8}
+                {'title': 'Architect', 'weight': 0.95},
+                {'title': 'Graphic Designer', 'weight': 0.90},
+                {'title': 'Systems Architect', 'weight': 0.70}
             ],
             'abstract_reasoning': [
-                {'title': 'Research Scientist', 'match': 0.9},
-                {'title': 'Strategic Planner', 'match': 0.85},
-                {'title': 'Business Analyst', 'match': 0.8}
+                {'title': 'Research Scientist', 'weight': 0.95},
+                {'title': 'Software Developer', 'weight': 0.85},
+                {'title': 'Financial Analyst', 'weight': 0.75}
             ]
         }
 
-        # Find top performing categories
-        sorted_categories = sorted(category_scores.items(),
-                                 key=lambda x: x[1]['percentage'],
-                                 reverse=True)
+        # Calculate a unified score for each possible career
+        career_scores = {}
+        for category, scores in category_scores.items():
+            if category in career_mapping:
+                percentage = scores['percentage']
+                # Grant points to careers linked to this aptitude category proportional to performance
+                for job in career_mapping[category]:
+                    title = job['title']
+                    points_gained = job['weight'] * percentage
+                    if title not in career_scores:
+                        career_scores[title] = {
+                            "total_score": 0, 
+                            "reasons": []
+                        }
+                    career_scores[title]["total_score"] += points_gained
+                    if percentage >= 60:
+                       career_scores[title]["reasons"].append(f"Strong in {category.replace('_', ' ')}")
 
-        for category, scores in sorted_categories[:2]:
-            if scores['percentage'] >= 60:  # Only recommend if score is decent
-                if category in career_mapping:
-                    for career in career_mapping[category]:
-                        match_percentage = career['match'] * scores['percentage']
-                        recommendations.append({
-                            'career_title': career['title'],
-                            'match_percentage': match_percentage,
-                            'reasoning': f"Strong performance in {category.replace('_', ' ')}"
-                        })
+        # Normalize logic: top theoretical score would be roughly 2.8 * 100 for Software Dev (appears in Logical, Abstract)
+        # So we cap recommendations percentage at 99%.
+        for title, data in career_scores.items():
+            if data["reasons"]: # Skip jobs with no strong correlating strengths
+                normalized_match = min(99.0, data["total_score"] / 1.5) # Divided by general scale factor
+                if normalized_match >= 50.0:
+                    recommendations.append({
+                        'career_title': title,
+                        'match_percentage': round(normalized_match, 1),
+                        'reasoning': " & ".join(set(data["reasons"]))
+                    })
 
-        # Save recommendations to database
-        for rec in recommendations[:5]:  # Top 5 recommendations
+        # Sort recommendations by highest match
+        recommendations.sort(key=lambda x: x['match_percentage'], reverse=True)
+
+        # Save Top recommendations to database
+        for rec in recommendations[:5]:  
             self.db.cursor.execute('''
                 INSERT INTO career_recommendations
                 (user_id, career_title, match_percentage, reasoning)

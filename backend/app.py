@@ -13,6 +13,7 @@ from flask_cors import CORS
 from agarwalwork import DatabaseManager, AptitudeTestManager
 from sanyamwork import PersonalityAnalyzer
 import json
+import random
 
 # --- INITIALIZATION ---
 app = Flask(__name__)
@@ -24,6 +25,23 @@ db_manager = DatabaseManager('career_counseling.db')
 aptitude_manager = AptitudeTestManager(db_manager)
 personality_analyzer = PersonalityAnalyzer()
 print("Backend server initialized successfully!")
+
+# Global error handler to log errors
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Log the error if it's not a standard HTTP error
+    db_manager.log_error(str(e), endpoint=request.path)
+    return jsonify({"error": "An internal error occurred."}), 500
+
+# Function to log regular user actions
+@app.after_request
+def log_request_activity(response):
+    if request.path.startswith('/aptitude-test/submit') and response.status_code == 200:
+        # User ID is hardcoded to 1 for now in the frontend
+        db_manager.log_activity(1, 'SUBMITTED_TEST', 'User finished aptitude test')
+    elif request.path.startswith('/analyze-essay') and response.status_code == 200:
+        db_manager.log_activity(1, 'ANALYZED_ESSAY', 'User analyzed personal essay')
+    return response
 
 # --- API ENDPOINTS ---
 @app.route('/')
@@ -101,8 +119,108 @@ def analyze_essay():
         analysis = personality_analyzer.analyze_career_essay(essay_text)
         return jsonify(analysis)
     except Exception as e:
+        db_manager.log_error(str(e), endpoint='/analyze-essay')
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/recommendations/feedback', methods=['POST'])
+def submit_feedback():
+    """Endpoint to record user feedback (upvote/downvote)"""
+    try:
+        data = request.json
+        user_id = data.get('user_id', 1)
+        rec_id = data.get('recommendation_id')
+        feedback_type = data.get('feedback_type') # 'UPVOTE' or 'DOWNVOTE'
+        if not rec_id or not feedback_type:
+             return jsonify({"error": "Missing parameters"}), 400
+        
+        db_manager.add_recommendation_feedback(user_id, rec_id, feedback_type)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        db_manager.log_error(str(e), endpoint='/recommendations/feedback')
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/market-insights', methods=['GET'])
+def get_market_insights():
+    """Simulate realistic localized market data based on career and location"""
+    career = request.args.get('career', 'Professional')
+    location = request.args.get('location', 'USA')
+    
+    # Generate random localized data
+    if location == 'India':
+        salary_min = random.randint(3, 15)
+        salary_max = salary_min + random.randint(2, 10)
+        salary_str = f"₹{salary_min}L - ₹{salary_max}L / yr"
+        locations_list = ["Bangalore", "Mumbai", "Delhi NCR", "Hyderabad", "Pune"]
+    elif location == 'UK':
+        salary_min = random.randint(25, 60)
+        salary_max = salary_min + random.randint(10, 40)
+        salary_str = f"£{salary_min}k - £{salary_max}k / yr"
+        locations_list = ["London", "Manchester", "Birmingham", "Edinburgh"]
+    else:  # Default USA
+        salary_min = random.randint(50, 110)
+        salary_max = salary_min + random.randint(20, 60)
+        salary_str = f"${salary_min}k - ${salary_max}k / yr"
+        locations_list = ["New York, NY", "San Francisco, CA", "Austin, TX", "Seattle, WA", "Remote"]
+        
+    num_openings = random.randint(120, 5000)
+    demand = random.choice(["Very High", "High", "Stable", "Growing"])
+    
+    # Generate fake job listings
+    job_listings = []
+    for _ in range(random.randint(2, 4)):
+        company = random.choice(["TechFlow", "Global Systems Inc", "Apex Solutions", "Innovative Corp", "NextGen Partners", "Pioneer LLC"])
+        job_listings.append({
+            "title": career,
+            "company": company,
+            "location": random.choice(locations_list),
+            "posted": f"{random.randint(1, 14)} days ago"
+        })
+        
+    return jsonify({
+        "career": career,
+        "location": location,
+        "average_salary_range": salary_str,
+        "active_openings": num_openings,
+        "demand_trend": demand,
+        "live_jobs": job_listings
+    })
+
+# --- ADMIN ENDPOINTS ---
+@app.route('/admin/login', methods=['POST'])
+def admin_login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    if db_manager.authenticate_admin(username, password):
+        return jsonify({"status": "success", "token": "fake-jwt-token-for-demo"})
+    return jsonify({"error": "Invalid credentials"}), 401
+
+@app.route('/admin/dashboard-stats', methods=['GET'])
+def admin_stats():
+    # In a real app, verify token here
+    try:
+        stats = db_manager.get_dashboard_stats()
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/admin/users', methods=['GET'])
+def admin_users():
+    try:
+        users = db_manager.get_all_users()
+        return jsonify(users)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/admin/logs', methods=['GET'])
+def admin_logs():
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        logs = db_manager.get_recent_activity(limit)
+        return jsonify(logs)
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 # --- RUN THE SERVER ---
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False, threaded=False)
