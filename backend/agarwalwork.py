@@ -344,90 +344,55 @@ class AptitudeTestManager:
         self.load_sample_questions()
 
     def load_sample_questions(self):
-        """Load sample aptitude questions into database"""
+        """Load rich aptitude questions into database (only if not already loaded)"""
+        self.db.cursor.execute("SELECT COUNT(*) FROM questions")
+        if self.db.cursor.fetchone()[0] >= 25:
+            return  # Already loaded, skip to avoid duplicates
 
         sample_questions = [
-            # Logical Reasoning
-            {
-                'category': 'logical_reasoning',
-                'difficulty': 'easy',
-                'question': 'What comes next: 2, 4, 8, 16, ?',
-                'options': ['20', '24', '32', '36'],
-                'correct_answer': 2,
-                'explanation': 'Each number is multiplied by 2'
-            },
-            {
-                'category': 'logical_reasoning',
-                'difficulty': 'medium',
-                'question': 'If all roses are flowers and some flowers fade quickly, then:',
-                'options': [
-                    'All roses fade quickly',
-                    'Some roses fade quickly',
-                    'No roses fade quickly',
-                    'Cannot be determined'
-                ],
-                'correct_answer': 3,
-                'explanation': 'We cannot determine if roses are among the flowers that fade quickly'
-            },
+            # --- LOGICAL REASONING ---
+            {'category': 'logical_reasoning', 'difficulty': 'easy', 'question': 'What comes next: 2, 4, 8, 16, ?', 'options': ['20', '24', '32', '36'], 'correct_answer': 2, 'explanation': 'Each number is multiplied by 2'},
+            {'category': 'logical_reasoning', 'difficulty': 'medium', 'question': 'If all roses are flowers and some flowers fade quickly, then:', 'options': ['All roses fade quickly', 'Some roses fade quickly', 'No roses fade quickly', 'Cannot be determined'], 'correct_answer': 3, 'explanation': 'We cannot determine if roses are among the flowers that fade quickly'},
+            {'category': 'logical_reasoning', 'difficulty': 'easy', 'question': 'Which number does not belong: 2, 3, 5, 8, 11, 13?', 'options': ['3', '5', '8', '11'], 'correct_answer': 2, 'explanation': '8 is not a prime number; all others are prime'},
+            {'category': 'logical_reasoning', 'difficulty': 'hard', 'question': 'All teachers are writers. Some writers are scientists. Therefore:', 'options': ['All teachers are scientists', 'Some teachers are scientists', 'No teachers are scientists', 'Cannot be determined'], 'correct_answer': 3, 'explanation': 'We only know some writers are scientists, not which ones'},
+            {'category': 'logical_reasoning', 'difficulty': 'medium', 'question': 'If COLD is coded as DPME, how is WARM coded?', 'options': ['XBSN', 'WBSM', 'XARM', 'XBNS'], 'correct_answer': 0, 'explanation': 'Each letter is shifted by +1 in the alphabet'},
+            {'category': 'logical_reasoning', 'difficulty': 'easy', 'question': 'What comes next: 1, 4, 9, 16, 25, ?', 'options': ['30', '36', '49', '42'], 'correct_answer': 1, 'explanation': 'These are perfect squares: 6² = 36'},
+            {'category': 'logical_reasoning', 'difficulty': 'medium', 'question': 'A is sister of B. B is brother of C. How is A related to C?', 'options': ['Sister', 'Brother', 'Mother', 'Cannot be determined'], 'correct_answer': 0, 'explanation': 'A is a girl (sister) so she is C\'s sister'},
 
-            # Verbal Ability
-            {
-                'category': 'verbal_ability',
-                'difficulty': 'easy',
-                'question': 'Choose the correct spelling:',
-                'options': ['Accomodate', 'Accommodate', 'Acommodate', 'Acomodate'],
-                'correct_answer': 1,
-                'explanation': 'The correct spelling is "Accommodate" with double c and double m'
-            },
-            {
-                'category': 'verbal_ability',
-                'difficulty': 'medium',
-                'question': 'Choose the word most similar to "Eloquent":',
-                'options': ['Silent', 'Articulate', 'Rude', 'Brief'],
-                'correct_answer': 1,
-                'explanation': 'Eloquent means fluent or persuasive in speaking, similar to articulate'
-            },
+            # --- NUMERICAL ABILITY ---
+            {'category': 'numerical_ability', 'difficulty': 'easy', 'question': 'What is 15% of 200?', 'options': ['20', '25', '30', '35'], 'correct_answer': 2, 'explanation': '15% of 200 = 0.15 × 200 = 30'},
+            {'category': 'numerical_ability', 'difficulty': 'medium', 'question': 'A train travels 360 km in 6 hours. What is its average speed?', 'options': ['50 km/h', '60 km/h', '70 km/h', '80 km/h'], 'correct_answer': 1, 'explanation': 'Speed = Distance/Time = 360/6 = 60 km/h'},
+            {'category': 'numerical_ability', 'difficulty': 'easy', 'question': 'If a shirt costs $80 and is on 25% sale, what is the price?', 'options': ['$55', '$60', '$65', '$70'], 'correct_answer': 1, 'explanation': '25% of 80 = 20; 80 - 20 = $60'},
+            {'category': 'numerical_ability', 'difficulty': 'medium', 'question': 'What is the average of 12, 15, 18, 21, 24?', 'options': ['17', '18', '19', '20'], 'correct_answer': 1, 'explanation': 'Sum = 90; 90 / 5 = 18'},
+            {'category': 'numerical_ability', 'difficulty': 'hard', 'question': 'A car depreciates at 20% per year. After 2 years, what % of the original value remains?', 'options': ['60%', '64%', '68%', '72%'], 'correct_answer': 1, 'explanation': '0.8 × 0.8 = 0.64, so 64% remains'},
+            {'category': 'numerical_ability', 'difficulty': 'medium', 'question': 'If 6 workers complete a job in 8 days, how many workers do the same job in 4 days?', 'options': ['10', '12', '14', '16'], 'correct_answer': 1, 'explanation': 'Total work = 6 × 8 = 48 units. Workers needed = 48/4 = 12'},
 
-            # Numerical Ability
-            {
-                'category': 'numerical_ability',
-                'difficulty': 'easy',
-                'question': 'What is 15% of 200?',
-                'options': ['20', '25', '30', '35'],
-                'correct_answer': 2,
-                'explanation': '15% of 200 = 0.15 × 200 = 30'
-            },
-            {
-                'category': 'numerical_ability',
-                'difficulty': 'medium',
-                'question': 'A train travels 360 km in 6 hours. What is its average speed?',
-                'options': ['50 km/h', '60 km/h', '70 km/h', '80 km/h'],
-                'correct_answer': 1,
-                'explanation': 'Speed = Distance/Time = 360/6 = 60 km/h'
-            },
+            # --- VERBAL ABILITY ---
+            {'category': 'verbal_ability', 'difficulty': 'easy', 'question': 'Choose the correct spelling:', 'options': ['Accomodate', 'Accommodate', 'Acommodate', 'Acomodate'], 'correct_answer': 1, 'explanation': 'The correct spelling is "Accommodate" with double c and double m'},
+            {'category': 'verbal_ability', 'difficulty': 'medium', 'question': 'Choose the word most similar to "Eloquent":', 'options': ['Silent', 'Articulate', 'Rude', 'Brief'], 'correct_answer': 1, 'explanation': 'Eloquent means fluent or persuasive in speaking, similar to articulate'},
+            {'category': 'verbal_ability', 'difficulty': 'easy', 'question': 'Choose the antonym of "Expand":', 'options': ['Grow', 'Extend', 'Contract', 'Increase'], 'correct_answer': 2, 'explanation': 'Contract means to shrink or reduce, the opposite of expand'},
+            {'category': 'verbal_ability', 'difficulty': 'easy', 'question': 'Complete the analogy: Book is to Library as Painting is to ___', 'options': ['Artist', 'Canvas', 'Gallery', 'Museum'], 'correct_answer': 2, 'explanation': 'A gallery is a place where paintings are displayed, just as a library stores books'},
+            {'category': 'verbal_ability', 'difficulty': 'medium', 'question': 'Identify the error: "She don\'t like the way he speaks to her."', 'options': ['She', 'don\'t', 'like', 'speaks'], 'correct_answer': 1, 'explanation': 'Should be "doesn\'t" — she is singular, so we use "does not"'},
+            {'category': 'verbal_ability', 'difficulty': 'medium', 'question': 'Which is the best synonym for "Meticulous"?', 'options': ['Careless', 'Careful', 'Lazy', 'Hasty'], 'correct_answer': 1, 'explanation': 'Meticulous means showing great attention to detail'},
 
-            # Spatial Reasoning
-            {
-                'category': 'spatial_reasoning',
-                'difficulty': 'easy',
-                'question': 'How many faces does a cube have?',
-                'options': ['4', '5', '6', '8'],
-                'correct_answer': 2,
-                'explanation': 'A cube has 6 faces'
-            },
+            # --- SPATIAL REASONING ---
+            {'category': 'spatial_reasoning', 'difficulty': 'easy', 'question': 'How many faces does a cube have?', 'options': ['4', '5', '6', '8'], 'correct_answer': 2, 'explanation': 'A cube has 6 faces'},
+            {'category': 'spatial_reasoning', 'difficulty': 'medium', 'question': 'If you fold a square piece of paper in half twice, how many layers do you have?', 'options': ['2', '3', '4', '6'], 'correct_answer': 2, 'explanation': 'Each fold doubles layers: 1 → 2 → 4'},
+            {'category': 'spatial_reasoning', 'difficulty': 'hard', 'question': 'A 3D shape has 6 faces, 12 edges, and 8 vertices. What is it?', 'options': ['Tetrahedron', 'Cube', 'Pyramid', 'Cylinder'], 'correct_answer': 1, 'explanation': 'A cube (or rectangular prism) has 6 faces, 12 edges, and 8 vertices'},
+            {'category': 'spatial_reasoning', 'difficulty': 'medium', 'question': 'Which shape has NO edges and NO vertices?', 'options': ['Cone', 'Cube', 'Sphere', 'Cylinder'], 'correct_answer': 2, 'explanation': 'A sphere is perfectly round with no edges or vertices'},
 
-            # Abstract Reasoning
-            {
-                'category': 'abstract_reasoning',
-                'difficulty': 'medium',
-                'question': 'Find the pattern: A1, C3, E5, G7, ?',
-                'options': ['H8', 'I9', 'J10', 'K11'],
-                'correct_answer': 1,
-                'explanation': 'Letters skip one (A,C,E,G,I) and numbers increase by 2 (1,3,5,7,9)'
-            }
+            # --- ABSTRACT REASONING ---
+            {'category': 'abstract_reasoning', 'difficulty': 'medium', 'question': 'Find the pattern: A1, C3, E5, G7, ?', 'options': ['H8', 'I9', 'J10', 'K11'], 'correct_answer': 1, 'explanation': 'Letters skip one (A,C,E,G,I) and numbers increase by 2 (1,3,5,7,9)'},
+            {'category': 'abstract_reasoning', 'difficulty': 'easy', 'question': 'What is the next shape in the pattern: Circle, Triangle, Square, Pentagon, ?', 'options': ['Hexagon', 'Octagon', 'Star', 'Rectangle'], 'correct_answer': 0, 'explanation': 'The pattern increases the number of sides: 0, 3, 4, 5, 6 → Hexagon'},
+            {'category': 'abstract_reasoning', 'difficulty': 'medium', 'question': 'What comes next: 1, 2, 6, 24, 120, ?', 'options': ['240', '360', '600', '720'], 'correct_answer': 3, 'explanation': 'The pattern is factorials: 1!, 2!, 3!, 4!, 5!, 6! = 720'},
+            {'category': 'abstract_reasoning', 'difficulty': 'hard', 'question': 'If → means add, ← means subtract, ↑ means multiply, ↓ means divide. Solve: 5 ↑ 3 → 2 ↓ 17', 'options': ['1', '2', '3', '4'], 'correct_answer': 0, 'explanation': '5 × 3 = 15; 15 + 2 = 17; 17 / 17 = 1'},
+
+            # --- INTERESTS / PREFERENCES (unlabeled, for career mapping) ---
+            {'category': 'interest', 'difficulty': 'easy', 'question': 'Which activity do you enjoy most?', 'options': ['Coding and building apps', 'Helping and counseling people', 'Creating art or music', 'Organizing budgets and spreadsheets'], 'correct_answer': -1, 'explanation': 'interest:tech,social,arts,finance'},
+            {'category': 'interest', 'difficulty': 'easy', 'question': 'Which describes you best?', 'options': ['I love analyzing data and solving problems', 'I love communicating and leading teams', 'I love designing and crafting things', 'I love teaching and explaining concepts clearly'], 'correct_answer': -1, 'explanation': 'interest:tech,leadership,arts,education'},
+            {'category': 'interest', 'difficulty': 'easy', 'question': 'What kind of work environment suits you?', 'options': ['A quiet lab or computer lab', 'A hospital or social center', 'A creative studio or agency', 'A courtroom or business office'], 'correct_answer': -1, 'explanation': 'interest:tech,healthcare,arts,law_business'},
         ]
 
-        # Insert questions into database
         for q in sample_questions:
             self.db.cursor.execute('''
                 INSERT OR IGNORE INTO questions
@@ -437,6 +402,7 @@ class AptitudeTestManager:
                   json.dumps(q['options']), q['correct_answer'], q['explanation']))
 
         self.db.conn.commit()
+
 
     def get_test_questions(self, categories: List[str] = None,
                           num_questions: int = 10) -> List[Dict]:

@@ -11,16 +11,14 @@ Original file is located at
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from agarwalwork import DatabaseManager, AptitudeTestManager
-from sanyamwork import PersonalityAnalyzer
+from sanyamwork import PersonalityAnalyzer, get_gemini_client
 import json
 import random
 import os
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google.genai import types
 
 load_dotenv()
-if "GEMINI_API_KEY" in os.environ:
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
 # --- INITIALIZATION ---
 app = Flask(__name__)
@@ -57,10 +55,18 @@ def index():
 
 @app.route('/aptitude-test/questions', methods=['GET'])
 def get_questions():
-    """Endpoint to get questions for the aptitude test"""
+    """Endpoint to get questions for the aptitude test - 15 questions"""
     try:
-        questions = aptitude_manager.get_test_questions(num_questions=8)
-        # We don't send the correct answer to the client
+        # Get a mix of aptitude and interest questions
+        aptitude_qs = aptitude_manager.get_test_questions(
+            categories=['logical_reasoning', 'numerical_ability', 'verbal_ability', 'spatial_reasoning', 'abstract_reasoning'],
+            num_questions=12
+        )
+        interest_qs = aptitude_manager.get_test_questions(
+            categories=['interest'],
+            num_questions=3
+        )
+        questions = aptitude_qs + interest_qs
         for q in questions:
             del q['correct_answer']
             del q['explanation']
@@ -73,31 +79,104 @@ def submit_test():
     """Endpoint to submit test answers and get results"""
     try:
         data = request.json
-        user_id = data.get('user_id', 1)  # Using a default user_id=1 for now
+        user_id = data.get('user_id', 1)
         user_responses = data.get('answers')
+        user_age = data.get('age', 'Not provided')
+        user_education = data.get('education', 'Not provided')
+        user_interests = data.get('interests', [])  # interest question answers
 
-        all_questions_in_db = aptitude_manager.get_test_questions(num_questions=100)
+        all_questions_in_db = aptitude_manager.get_test_questions(num_questions=200)
         full_questions_map = {q['question_id']: q for q in all_questions_in_db}
 
         eval_responses = []
+        interest_responses = []
         for res in user_responses:
             question_id = res['question_id']
             if question_id in full_questions_map:
                 question_data = full_questions_map[question_id]
-                eval_responses.append({
-                    'question_id': question_id,
-                    'category': question_data['category'],
-                    'user_answer': res['user_answer'],
-                    'correct_answer': question_data['correct_answer']
-                })
+                if question_data['category'] == 'interest':
+                    interest_responses.append({'option': res.get('user_answer'), 'explanation': question_data.get('explanation', '')})
+                else:
+                    eval_responses.append({
+                        'question_id': question_id,
+                        'category': question_data['category'],
+                        'user_answer': res['user_answer'],
+                        'correct_answer': question_data['correct_answer']
+                    })
 
         test_id = db_manager.save_test_result(user_id, "General Aptitude", 0)
-        results = aptitude_manager.evaluate_test(user_id, test_id, eval_responses)
+        results = aptitude_manager.evaluate_test(user_id, test_id, eval_responses) if eval_responses else {'overall_score': 0, 'category_scores': {}, 'correct_answers': 0, 'total_questions': 0}
+        
+        # Use rule-based recommendations as fallback
         recommendations = aptitude_manager.generate_career_recommendations(user_id, results)
-
-        return jsonify({"results": results, "recommendations": recommendations})
+        
+        return jsonify({
+            "results": results, 
+            "recommendations": recommendations,
+            "user_context": {"age": user_age, "education": user_education, "interests": interest_responses}
+        })
     except Exception as e:
         print(f"Error submitting test: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/smart-recommendations', methods=['POST'])
+def smart_recommendations():
+    """Use Gemini AI to generate highly personalized career recommendations based on user profile + test scores."""
+    try:
+        data = request.json
+        age = data.get('age', 'unknown')
+        education = data.get('education', 'unspecified')
+        location = data.get('location', 'USA')
+        category_scores = data.get('category_scores', {})
+        interest_answers = data.get('interest_answers', [])
+
+        client = get_gemini_client()
+        if not client:
+            return jsonify({"error": "Gemini API key not configured"}), 500
+
+        # Build skill summary string
+        skills_str = ", ".join([f"{k.replace('_', ' ')}: {round(v.get('percentage', 0))}%" for k, v in category_scores.items() if isinstance(v, dict)]) or "No aptitude scores available"
+        interests_str = ", ".join([r['option_text'] for r in interest_answers if 'option_text' in r]) or "Not provided"
+
+        prompt = f"""You are an expert career counselor. Analyze this user profile and provide 5 highly personalized career recommendations.
+
+User Profile:
+- Age: {age}
+- Education: {education}
+- Location: {location}
+- Aptitude Scores: {skills_str}
+- Stated Interests: {interests_str}
+
+For each career recommendation, respond ONLY with a JSON array of 5 objects. Each object must have:
+- "career_title": specific job title
+- "match_percentage": a number 60-99 based on how well it fits
+- "reasoning": one clear sentence explaining why this career fits THIS specific user based on their age, education, and scores
+- "next_step": one concrete action they can take THIS WEEK to get started
+
+Return ONLY the raw JSON array, no explanation, no markdown."""
+
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.4,
+                max_output_tokens=1024,
+                response_mime_type="application/json"
+            )
+        )
+        
+        raw = response.text.strip()
+        if raw.startswith('```'):
+            raw = raw.split('```')[1]
+            if raw.startswith('json'): raw = raw[4:]
+            raw = raw.strip()
+        
+        recs = json.loads(raw)
+        return jsonify({"recommendations": recs})
+    except Exception as e:
+        db_manager.log_error(str(e), endpoint='/smart-recommendations')
+        print(f"Smart recommendations error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/careers', methods=['GET'])
@@ -136,17 +215,35 @@ def generate_roadmap():
         data = request.json
         career_title = data.get('career')
         user_location = data.get('location', 'Global')
+        user_age = data.get('age', 'unknown')
+        user_education = data.get('education', 'unspecified')
         
         if not career_title:
             return jsonify({"error": "Career title is required"}), 400
-            
-        if not os.environ.get("GEMINI_API_KEY"):
-            return jsonify({"roadmap": f"# Roadmap for {career_title}\\n\\nPlease add a Google Gemini API Key to see the AI generated roadmap."})
-            
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        prompt = f"Create a step-by-step 12-month career roadmap for a user who wants to become a '{career_title}'. Keep the location context of '{user_location}' in mind for realistic advice. Format the response beautifully in Markdown with sections for Months 1-3, 4-6, and 7-12."
         
-        response = model.generate_content(prompt)
+        client = get_gemini_client()
+        if not client:
+            return jsonify({"roadmap": f"# Roadmap for {career_title}\n\nPlease add a Google Gemini API Key to see the AI generated roadmap."})
+        
+        prompt = f"""Create a personalized, step-by-step 12-month career roadmap for someone who wants to become a '{career_title}'.
+        
+        User context:
+        - Age: {user_age}
+        - Education: {user_education}
+        - Location: {user_location}
+        
+        Format the response in clean Markdown with three sections:
+        ## 🌱 Months 1-3: Foundation Building
+        ## 🚀 Months 4-6: Skill Development
+        ## 🎯 Months 7-12: Job Hunting & Launch
+        
+        In each section, give 3-4 concrete, actionable steps tailored to the user's age, background, and location. Be specific about courses, certifications, and projects to build."""
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.5, max_output_tokens=2048)
+        )
         return jsonify({"roadmap": response.text})
     except Exception as e:
         db_manager.log_error(str(e), endpoint='/generate-roadmap')
@@ -160,33 +257,31 @@ def chat_coach():
         messages = data.get('messages', [])
         
         if not messages:
-             return jsonify({"error": "Messages array is required"}), 400
-             
-        if not os.environ.get("GEMINI_API_KEY"):
-            return jsonify({"reply": "I am the AI Career Coach, but my Gemini API key is missing!"})
-
-        # Format history for Gemini API (uses 'user' and 'model' roles)
-        formatted_history = []
-        for msg in messages[:-1]: # All but the latest
-            role = "user" if msg['role'] == "user" else "model"
-            formatted_history.append({"role": role, "parts": [msg['content']]})
-            
-        latest_message = messages[-1]['content']
+            return jsonify({"error": "Messages array is required"}), 400
         
-        # System instructions given via history or context
-        system_instruction = "You are a professional, encouraging, and highly knowledgeable Career Counselor named CareerAI Coach. Provide concise, actionable advice for job seekers and career switchers."
+        client = get_gemini_client()
+        if not client:
+            return jsonify({"reply": "I'm the AI Career Coach, but my Gemini API key is missing. Please add it to get started!"})
         
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=system_instruction
+        # Build the full conversation context as a single prompt for simplicity and reliability
+        system = "You are CareerAI Coach, a professional, encouraging, and knowledgeable career counselor. Keep your responses concise (2-3 paragraphs max), actionable, and warm. Use bullet points where helpful."
+ 
+        history_text = f"[SYSTEM INSTRUCTIONS]: {system}\n\n"
+        for msg in messages:
+            role = "User" if msg['role'] == 'user' else "CareerAI Coach"
+            history_text += f"{role}: {msg['content']}\n\n"
+        
+        history_text += "CareerAI Coach:"
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=history_text,
+            config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=1024)
         )
-        
-        chat = model.start_chat(history=formatted_history)
-        response = chat.send_message(latest_message)
-        
-        return jsonify({"reply": response.text})
+        return jsonify({"reply": response.text.strip()})
     except Exception as e:
         db_manager.log_error(str(e), endpoint='/chat-coach')
+        print(f"Chat-coach error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/recommendations/feedback', methods=['POST'])

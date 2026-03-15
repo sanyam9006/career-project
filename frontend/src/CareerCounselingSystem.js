@@ -39,31 +39,87 @@ const Dashboard = ({ setCurrentPage, resetTest }) => (
   </div>
 );
 
-const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, currentQuestion, handleAnswer, answers, handleNextQuestion, handleFinishTest, resetTest }) => {
+const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, currentQuestion, handleAnswer, answers, handleNextQuestion, handleFinishTest, resetTest, userAge, setUserAge, userEducation, setUserEducation, userProfileSet, setUserProfileSet }) => {
   if (isLoading) return <div className="p-6 text-center">Loading Test...</div>;
   if (!aptitudeQuestions || aptitudeQuestions.length === 0) return <div className="p-6 text-center text-red-500">Failed to load test questions. Please ensure the backend server is running.</div>;
 
+  // Step 1: Collect user profile before showing test
+  if (!userProfileSet) {
+    return (
+      <div className="p-6 max-w-xl mx-auto">
+        <div className="bg-white p-8 rounded-2xl shadow-xl border">
+          <div className="mb-6">
+            <Brain className="w-12 h-12 text-purple-600 mb-4" />
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Before We Begin</h1>
+            <p className="text-gray-500">Tell us a little about yourself so our AI can personalize your career recommendations.</p>
+          </div>
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Your Age</label>
+              <input
+                type="number" placeholder="e.g. 17" min="10" max="70"
+                value={userAge} onChange={e => setUserAge(e.target.value)}
+                className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-purple-500 focus:outline-none text-gray-800"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Current Education Level</label>
+              <select value={userEducation} onChange={e => setUserEducation(e.target.value)}
+                className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-purple-500 focus:outline-none text-gray-800 bg-white">
+                <option value="">-- Select Education Level --</option>
+                <option>Elementary / Middle School</option>
+                <option>High School (10th Grade)</option>
+                <option>High School (12th Grade)</option>
+                <option>Undergraduate (BTech / BA / BSc)</option>
+                <option>Postgraduate (MTech / MBA / MSc)</option>
+                <option>PhD / Research</option>
+                <option>Working Professional</option>
+              </select>
+            </div>
+          </div>
+          <button onClick={() => setUserProfileSet(true)} disabled={!userAge || !userEducation}
+            className="mt-8 w-full bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition-colors text-lg disabled:bg-gray-300 disabled:cursor-not-allowed">
+            Start My Personalized Test →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (showResults && testResults) {
+    const recs = testResults.aiRecommendations || testResults.recommendations || [];
     return (
       <div className="p-6 max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Your Career Recommendations</h1>
-        <div className="bg-white p-6 rounded-xl shadow-lg border mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Aptitude Profile</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(testResults.results.category_scores).map(([category, score]) => (
-              <div key={category} className="text-center p-2 bg-gray-100 rounded-lg">
-                <p className="text-sm font-medium capitalize text-gray-700">{category.replace('_', ' ')}</p>
-                <p className="text-2xl font-bold text-blue-600">{Math.round(score.percentage)}%</p>
-              </div>
-            ))}
+        <h1 className="text-3xl font-bold text-gray-900 mb-1">Your Career Recommendations</h1>
+        {userAge && <p className="text-gray-500 mb-6">Personalized for age {userAge} · {userEducation}</p>}
+        {testResults.results?.category_scores && (
+          <div className="bg-white p-6 rounded-xl shadow-lg border mb-8">
+            <h2 className="text-xl font-semibold mb-4">Aptitude Category Scores</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(testResults.results.category_scores).map(([category, score]) => (
+                <div key={category} className="text-center bg-gray-50 p-4 rounded-xl border">
+                  <p className="text-sm font-medium capitalize text-gray-700">{category.replace('_', ' ')}</p>
+                  <p className="text-2xl font-bold text-blue-600">{Math.round(score.percentage)}%</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+        <h2 className="text-xl font-bold text-gray-800 mb-4">{testResults.aiRecommendations ? '🤖 AI-Powered Recommendations' : '📊 Aptitude-Based Recommendations'}</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {testResults.recommendations.map((career, index) => (
-            <div key={index} className="bg-white p-6 rounded-xl shadow-lg border hover:shadow-xl transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{career.career_title}</h3>
-              <p className="text-gray-600 mb-4 text-sm">{career.reasoning}</p>
-              <div className="text-green-600 font-semibold">Match: {Math.round(career.match_percentage)}%</div>
+          {recs.map((career, index) => (
+            <div key={index} className="bg-white p-6 rounded-xl shadow-lg border hover:shadow-xl transition-shadow flex flex-col">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-xl font-bold text-gray-900 pr-2">{career.career_title}</h3>
+                <span className="bg-green-100 text-green-800 font-bold text-sm px-3 py-1 rounded-full whitespace-nowrap">{Math.round(career.match_percentage)}%</span>
+              </div>
+              <p className="text-gray-600 mb-4 text-sm flex-1">{career.reasoning}</p>
+              {career.next_step && (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                  <p className="text-xs font-bold text-blue-700 mb-1">💡 Your Next Step</p>
+                  <p className="text-sm text-blue-800">{career.next_step}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -73,6 +129,7 @@ const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, 
   }
 
   const question = aptitudeQuestions[currentQuestion];
+  const isInterestQuestion = question?.category === 'interest';
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <div className="mb-8">
@@ -80,7 +137,8 @@ const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, 
           <h1 className="text-3xl font-bold text-gray-900">Aptitude Test</h1>
           <span className="text-lg font-semibold text-blue-600">{currentQuestion + 1}/{aptitudeQuestions.length}</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-blue-600 h-2 rounded-full" style={{ width: `${((currentQuestion + 1) / aptitudeQuestions.length) * 100}%` }}></div></div>
+        <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${((currentQuestion + 1) / aptitudeQuestions.length) * 100}%` }}></div></div>
+        {isInterestQuestion && <p className="text-xs text-purple-600 mt-2 font-medium">💡 Interest Question — all answers are valid, pick what fits you!</p>}
       </div>
       <div className="bg-white p-8 rounded-xl shadow-lg border">
         <h2 className="text-xl font-semibold text-gray-900 mb-6">{question.question}</h2>
@@ -246,17 +304,16 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation }) => {
                   <p className="text-purple-600 font-medium">Gemini AI is generating your personalized 12-month roadmap...</p>
                 </div>
               ) : roadmapData && roadmapData.content && (
-                <div className="whitespace-pre-wrap font-sans text-gray-800 leading-relaxed custom-markdown-styles">
-                  {/* Basic markdown parsing for bold and headers */}
-                  {roadmapData.content.split('\\n').map((line, i) => {
+                <div className="font-sans text-gray-800 leading-relaxed">
+                  {roadmapData.content.split('\n').map((line, i) => {
                     if (line.startsWith('### ')) return <h4 key={i} className="text-lg font-bold text-gray-900 mt-4 mb-2">{line.replace('### ', '')}</h4>;
                     if (line.startsWith('## ')) return <h3 key={i} className="text-xl font-bold text-purple-800 mt-6 mb-3 border-b pb-1">{line.replace('## ', '')}</h3>;
                     if (line.startsWith('# ')) return <h2 key={i} className="text-2xl font-bold text-gray-900 mt-2 mb-4">{line.replace('# ', '')}</h2>;
                     if (line.startsWith('* **') || line.startsWith('- **')) {
                       const parts = line.split('**');
-                      return <li key={i} className="ml-4 mb-1"><strong>{parts[1]}</strong>{parts.slice(2).join('**')}</li>;
+                      return <li key={i} className="ml-5 mb-2 list-disc"><strong>{parts[1]}</strong>{parts.slice(2).join('**')}</li>;
                     }
-                    if (line.startsWith('* ') || line.startsWith('- ')) return <li key={i} className="ml-4 mb-1">{line.substring(2)}</li>;
+                    if (line.startsWith('* ') || line.startsWith('- ')) return <li key={i} className="ml-5 mb-1 list-disc">{line.substring(2)}</li>;
                     if (line.trim() === '') return <br key={i} />;
                     return <p key={i} className="mb-2">{line.split('**').map((part, index) => index % 2 === 1 ? <strong key={index}>{part}</strong> : part)}</p>;
                   })}
@@ -488,6 +545,11 @@ const CareerCounselingSystem = () => {
   const [careerDatabase, setCareerDatabase] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
+  // User Profile State for Aptitude Test
+  const [userAge, setUserAge] = useState('');
+  const [userEducation, setUserEducation] = useState('');
+  const [userProfileSet, setUserProfileSet] = useState(false);
+
   // AI Coach State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([
@@ -585,14 +647,44 @@ const CareerCounselingSystem = () => {
     });
 
     try {
+      // First submit the test to get aptitude scores
       const response = await fetch(`${API_URL}/aptitude-test/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: formattedAnswers, user_id: 1 }) // Hardcoding user_id for now
+        body: JSON.stringify({ 
+          answers: formattedAnswers, 
+          user_id: 1,
+          age: userAge,
+          education: userEducation
+        })
       });
       const data = await response.json();
       setTestResults(data);
       setShowResults(true);
+
+      // Then get AI-powered personalized recommendations
+      try {
+        const aiRes = await fetch(`${API_URL}/smart-recommendations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            age: userAge,
+            education: userEducation,
+            location: userLocation,
+            category_scores: data.results?.category_scores || {},
+            interest_answers: []
+          })
+        });
+        const aiData = await aiRes.json();
+        if (aiData.recommendations) {
+          setTestResults(prev => ({
+            ...prev,
+            aiRecommendations: aiData.recommendations
+          }));
+        }
+      } catch (aiError) {
+        console.log("AI recommendations fallback:", aiError);
+      }
     } catch (error) {
       console.error("Failed to submit test:", error);
     }
@@ -603,13 +695,16 @@ const CareerCounselingSystem = () => {
     setAnswers({});
     setShowResults(false);
     setTestResults(null);
+    setUserProfileSet(false);
+    setUserAge('');
+    setUserEducation('');
     setCurrentPage('aptitude');
   };
 
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard': return <Dashboard setCurrentPage={setCurrentPage} resetTest={resetTest} />;
-      case 'aptitude': return <AptitudeTest isLoading={isLoading} aptitudeQuestions={aptitudeQuestions} showResults={showResults} testResults={testResults} currentQuestion={currentQuestion} handleAnswer={handleAnswer} answers={answers} handleNextQuestion={handleNextQuestion} handleFinishTest={handleFinishTest} resetTest={resetTest} />;
+      case 'aptitude': return <AptitudeTest isLoading={isLoading} aptitudeQuestions={aptitudeQuestions} showResults={showResults} testResults={testResults} currentQuestion={currentQuestion} handleAnswer={handleAnswer} answers={answers} handleNextQuestion={handleNextQuestion} handleFinishTest={handleFinishTest} resetTest={resetTest} userAge={userAge} setUserAge={setUserAge} userEducation={userEducation} setUserEducation={setUserEducation} userProfileSet={userProfileSet} setUserProfileSet={setUserProfileSet} />;
       case 'essay': return <NlpEssayScreen essayText={essayText} setEssayText={setEssayText} isAnalyzing={isAnalyzing} setIsAnalyzing={setIsAnalyzing} nlpResults={nlpResults} setNlpResults={setNlpResults} />;
       case 'careers': return <CareerExplorer isLoading={isLoading} careerDatabase={careerDatabase} userLocation={userLocation} />;
       case 'admin': return <AdminPanel adminToken={adminToken} setAdminToken={setAdminToken} currentPage={currentPage} adminStats={adminStats} setAdminStats={setAdminStats} adminUsers={adminUsers} setAdminUsers={setAdminUsers} adminLogs={adminLogs} setAdminLogs={setAdminLogs} />;
@@ -674,10 +769,10 @@ const CareerCounselingSystem = () => {
                 <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] rounded-2xl p-3 text-sm shadow-sm ${msg.role === 'user' ? 'bg-purple-600 text-white rounded-tr-sm' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm'}`}>
                      {/* Basic markdown parsing for chat */}
-                     {msg.content.split('\\n').map((line, i) => {
+                     {msg.content.split('\n').map((line, i) => {
                         if (line.startsWith('* **') || line.startsWith('- **')) {
                            const parts = line.split('**');
-                           return <li key={i} className="ml-4 truncate text-wrap pt-1"><strong>{parts[1]}</strong>{parts.slice(2).join('**')}</li>;
+                           return <li key={i} className="ml-4 list-disc pt-1"><strong>{parts[1]}</strong>{parts.slice(2).join('**')}</li>;
                         }
                         if (line.trim() === '') return <div key={i} className="h-1"></div>;
                         return <p key={i} className="pt-1">{line.split('**').map((part, idx) => idx % 2 === 1 ? <strong key={idx}>{part}</strong> : part)}</p>;
