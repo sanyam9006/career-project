@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, BarChart3, Menu, X, Shield, Activity, ThumbsUp, ThumbsDown, Edit3, MapPin } from "lucide-react";
+import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Activity, ThumbsUp, ThumbsDown, Edit3, MapPin } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
 
@@ -332,6 +332,7 @@ const AdminPanel = ({ adminToken, setAdminToken, currentPage, adminStats, setAdm
 
   useEffect(() => {
     if (adminToken && currentPage === 'admin') fetchAdminData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminToken, currentPage]);
 
   if (!adminToken) {
