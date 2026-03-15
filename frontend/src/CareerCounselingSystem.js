@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, BarChart3, Menu, X, Shield, Activity, ThumbsUp, ThumbsDown, Edit3, MapPin } from "lucide-react";
 
-const API_URL = "http://127.0.0.1:5000";
+const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen, currentPage, setCurrentPage, resetTest }) => (
   <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-blue-900 to-purple-900 text-white transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>

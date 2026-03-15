@@ -18,7 +18,7 @@ import random
 # --- INITIALIZATION ---
 app = Flask(__name__)
 # CORS allows the React frontend to communicate with this backend
-CORS(app)
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
 # Initialize your backend modules
 db_manager = DatabaseManager('career_counseling.db')
