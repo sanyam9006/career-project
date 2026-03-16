@@ -1,47 +1,256 @@
-import React, { useState, useEffect } from "react";
-import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Activity, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, ExternalLink, Scale } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { NavLink, useNavigate, Routes, Route } from "react-router-dom";
+import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, Scale, Sparkles, Zap, Target, ArrowRight, Star, ExternalLink, Activity } from "lucide-react";
 
-const API_URL = process.env.REACT_APP_API_URL || 
-  (window.location.hostname === 'localhost' 
-    ? 'http://127.0.0.1:5000' 
+const API_URL = process.env.REACT_APP_API_URL ||
+  (window.location.hostname === 'localhost'
+    ? 'http://127.0.0.1:5000'
     : 'https://career-project-ph1x.onrender.com');
 
-const Sidebar = ({ sidebarOpen, setSidebarOpen, currentPage, setCurrentPage, resetTest }) => (
-  <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-blue-900 to-purple-900 text-white transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
-    <div className="flex items-center justify-between h-16 px-6 border-b border-blue-800">
-      <h1 className="text-xl font-bold flex items-center"><Brain className="w-6 h-6 mr-2" /> CareerAI</h1>
-      <button onClick={() => setSidebarOpen(false)} className="lg:hidden"><X className="w-6 h-6" /></button>
+const navLinkClass = ({ isActive }) =>
+  `w-full flex items-center px-4 py-3 text-left rounded-lg transition-all duration-200 ${isActive ? 'bg-white/20 text-white font-semibold shadow-inner' : 'text-white/80 hover:bg-white/10 hover:text-white'}`;
+
+const Sidebar = ({ sidebarOpen, setSidebarOpen, resetTest, user }) => (
+  <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-slate-900 via-blue-950 to-purple-950 text-white transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl`}>
+    <div className="flex items-center justify-between h-16 px-6 border-b border-white/10">
+      <h1 className="text-xl font-bold flex items-center tracking-tight">
+        <Brain className="w-6 h-6 mr-2 text-purple-400" />
+        <span className="bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">CareerAI</span>
+      </h1>
+      <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white/70 hover:text-white"><X className="w-6 h-6" /></button>
     </div>
-    <nav className="mt-8 px-4 space-y-2">
-      <button onClick={() => { setCurrentPage('dashboard'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'dashboard' ? 'bg-blue-700' : 'hover:bg-blue-800'}`}><Home className="w-5 h-5 mr-3" /> Dashboard</button>
-      <button onClick={() => { setCurrentPage('aptitude'); setSidebarOpen(false); resetTest(); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'aptitude' ? 'bg-blue-700' : 'hover:bg-blue-800'}`}><TestTube className="w-5 h-5 mr-3" /> Aptitude Test</button>
-      <button onClick={() => { setCurrentPage('essay'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'essay' ? 'bg-blue-700' : 'hover:bg-blue-800'}`}><Edit3 className="w-5 h-5 mr-3" /> Personality Essay</button>
-      <button onClick={() => { setCurrentPage('careers'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'careers' ? 'bg-blue-700' : 'hover:bg-blue-800'}`}><Users className="w-5 h-5 mr-3" /> Career Explorer</button>
-      <button onClick={() => { setCurrentPage('compare'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'compare' ? 'bg-teal-700' : 'hover:bg-teal-800'}`}><Scale className="w-5 h-5 mr-3" /> Compare Careers</button>
-      <div className="pt-8 mt-8 border-t border-blue-800">
-        <button onClick={() => { setCurrentPage('admin'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'admin' ? 'bg-purple-700' : 'hover:bg-purple-800'}`}><Shield className="w-5 h-5 mr-3" /> Admin Panel</button>
+
+    {user && (
+      <div className="mx-4 mt-4 p-3 bg-white/10 rounded-xl flex items-center gap-3">
+        <img src={user.picture} alt={user.name} className="w-9 h-9 rounded-full border-2 border-purple-400" />
+        <div className="overflow-hidden">
+          <p className="text-sm font-semibold text-white truncate">{user.name}</p>
+          <p className="text-xs text-white/60 truncate">{user.email}</p>
+        </div>
       </div>
+    )}
+
+    <nav className="mt-6 px-4 space-y-1 flex-1">
+      <NavLink to="/" end className={navLinkClass} onClick={() => setSidebarOpen(false)}>
+        <Home className="w-5 h-5 mr-3" /> Home
+      </NavLink>
+      <NavLink to="/test" className={navLinkClass} onClick={() => { setSidebarOpen(false); resetTest(); }}>
+        <TestTube className="w-5 h-5 mr-3" /> Aptitude Test
+      </NavLink>
+      <NavLink to="/essay" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
+        <Edit3 className="w-5 h-5 mr-3" /> Personality Essay
+      </NavLink>
+      <NavLink to="/careers" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
+        <Users className="w-5 h-5 mr-3" /> Career Explorer
+      </NavLink>
+      <NavLink to="/compare" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
+        <Scale className="w-5 h-5 mr-3" /> Compare Careers
+      </NavLink>
+      <NavLink to="/roadmap" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
+        <TrendingUp className="w-5 h-5 mr-3" /> Career Roadmap
+      </NavLink>
     </nav>
+
+    <div className="px-4 pb-6 border-t border-white/10 pt-4 mt-2">
+      <NavLink to="/admin" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
+        <Shield className="w-5 h-5 mr-3" /> Admin Panel
+      </NavLink>
+      {user ? (
+        <button onClick={() => { window.location.href = `${API_URL}/auth/logout`; }}
+          className="mt-2 w-full flex items-center px-4 py-3 text-left rounded-lg text-red-300 hover:bg-red-900/30 transition-all">
+          <X className="w-5 h-5 mr-3" /> Logout
+        </button>
+      ) : (
+        <button onClick={() => { window.location.href = `${API_URL}/auth/google`; }}
+          className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-gray-800 rounded-lg font-semibold text-sm hover:bg-gray-100 transition-all shadow">
+          <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Login with Google
+        </button>
+      )}
+    </div>
   </div>
 );
 
-const Dashboard = ({ setCurrentPage, resetTest }) => (
-  <div className="p-6">
-    <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to CareerAI</h1>
-    <p className="text-gray-600">Your intelligent companion for smart career decisions</p>
-    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 my-8">
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-xl shadow-lg"><Brain className="w-8 h-8 mb-4" /><h3 className="text-xl font-semibold mb-2">AI-Powered</h3><p className="text-blue-100">Accurate career recommendations</p></div>
-      <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-xl shadow-lg"><Award className="w-8 h-8 mb-4" /><h3 className="text-xl font-semibold mb-2">Comprehensive Tests</h3><p className="text-green-100">Detailed aptitude assessments</p></div>
-      <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl shadow-lg"><BookOpen className="w-8 h-8 mb-4" /><h3 className="text-xl font-semibold mb-2">Career Database</h3><p className="text-purple-100">Extensive career path information</p></div>
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-xl shadow-lg"><TrendingUp className="w-8 h-8 mb-4" /><h3 className="text-xl font-semibold mb-2">Market Insights</h3><p className="text-orange-100">Real-time job market trends</p></div>
+// ─── HOMEPAGE HERO ─────────────────────────────────────────────────────────────
+const Homepage = ({ resetTest }) => {
+  const navigate = useNavigate();
+  const stats = [
+    { value: '60+', label: 'Career Paths' },
+    { value: 'AI', label: 'Powered Engine' },
+    { value: 'MBTI', label: 'Personality Mapping' },
+    { value: 'Free', label: 'Forever' },
+  ];
+  const features = [
+    { icon: <TestTube className="w-8 h-8" />, title: 'Adaptive Aptitude Test', desc: 'Smart 20-question assessment that adjusts difficulty based on your performance to give personalized results.', color: 'from-blue-500 to-cyan-500', link: '/test' },
+    { icon: <Brain className="w-8 h-8" />, title: 'Personality Profiler', desc: 'Write about your passions and our AI instantly maps your text to one of 16 MBTI personality types.', color: 'from-purple-500 to-pink-500', link: '/essay' },
+    { icon: <TrendingUp className="w-8 h-8" />, title: 'AI Career Roadmaps', desc: 'Get a 12-month step-by-step roadmap for any career, tailored to your age, education, and location.', color: 'from-orange-500 to-rose-500', link: '/careers' },
+  ];
+  const steps = [
+    { num: '01', title: 'Take the Test', desc: 'Answer 20 adaptive questions in under 10 minutes.' },
+    { num: '02', title: 'Get Your Profile', desc: 'AI analyzes your scores to reveal your strengths, MBTI type, and ideal industries.' },
+    { num: '03', title: 'Build Your Path', desc: 'Explore careers, compare options, and generate a personalized 12-month roadmap.' },
+  ];
+  return (
+    <div className="min-h-screen">
+      {/* Hero */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-purple-950">
+        {/* Animated orbs */}
+        <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl" />
+
+        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur rounded-full text-white/80 text-sm font-medium mb-8 border border-white/20">
+            <Sparkles className="w-4 h-4 text-yellow-400" />
+            Powered by Google Gemini AI
+          </div>
+          <h1 className="text-5xl md:text-7xl font-black text-white leading-tight mb-6">
+            Discover Your
+            <span className="block bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">Perfect Career</span>
+            with AI.
+          </h1>
+          <p className="text-xl md:text-2xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Take a 10-minute adaptive aptitude test, map your personality to an MBTI type, and get a personalized career roadmap — completely free.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button onClick={() => { resetTest(); navigate('/test'); }}
+              className="group flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-lg rounded-2xl hover:from-purple-500 hover:to-blue-500 transition-all shadow-lg shadow-purple-900/50 hover:scale-105">
+              <Zap className="w-5 h-5 group-hover:animate-bounce" /> Start Free Test
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button onClick={() => navigate('/careers')}
+              className="flex items-center justify-center gap-2 px-8 py-4 bg-white/10 text-white font-bold text-lg rounded-2xl border border-white/20 hover:bg-white/20 transition-all backdrop-blur">
+              <Briefcase className="w-5 h-5" /> Explore Careers
+            </button>
+          </div>
+
+          {/* Stats row */}
+          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4">
+            {stats.map(s => (
+              <div key={s.label} className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5">
+                <p className="text-3xl font-black text-white">{s.value}</p>
+                <p className="text-sm text-white/60 mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-24 px-6 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">Everything You Need</h2>
+            <p className="text-xl text-gray-500 max-w-xl mx-auto">Three powerful AI tools to guide your career journey from start to finish.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {features.map(f => (
+              <button key={f.title} onClick={() => navigate(f.link)}
+                className="group text-left bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:-translate-y-2">
+                <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${f.color} text-white mb-6 shadow-lg`}>{f.icon}</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{f.title}</h3>
+                <p className="text-gray-500 leading-relaxed">{f.desc}</p>
+                <div className="mt-6 flex items-center text-blue-600 font-semibold text-sm group-hover:gap-2 gap-1 transition-all">
+                  Get Started <ArrowRight className="w-4 h-4" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it Works */}
+      <section className="py-24 px-6 bg-gradient-to-br from-blue-950 to-purple-950">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">How It Works</h2>
+            <p className="text-xl text-white/60">From blank page to clear career direction in just 3 steps.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {steps.map((s, i) => (
+              <div key={s.num} className="relative">
+                {i < steps.length - 1 && <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-purple-500 to-transparent z-0" />}
+                <div className="relative z-10 bg-white/10 backdrop-blur border border-white/20 rounded-3xl p-8">
+                  <div className="text-6xl font-black text-white/10 mb-4">{s.num}</div>
+                  <h3 className="text-xl font-bold text-white mb-3">{s.title}</h3>
+                  <p className="text-white/60 leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-12">
+            <button onClick={() => { resetTest(); navigate('/test'); }}
+              className="inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-xl rounded-2xl hover:from-purple-500 hover:to-blue-500 transition-all shadow-2xl hover:scale-105">
+              <Target className="w-6 h-6" /> Start My Career Journey
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white/50 py-10 text-center text-sm">
+        <p className="font-semibold text-white/80 mb-1">CareerAI</p>
+        <p>Built with React, Flask &amp; Google Gemini • Open Source</p>
+      </footer>
     </div>
-    <div className="grid md:grid-cols-3 gap-8">
-      <div className="bg-white p-6 rounded-xl shadow-lg border hover:shadow-xl transition-shadow"><h2 className="text-2xl font-bold text-gray-900 mb-4">Get Started</h2><p className="text-gray-600 mb-6">Take our comprehensive aptitude test to discover your ideal career path.</p><button onClick={() => { setCurrentPage('aptitude'); resetTest(); }} className="bg-blue-600 w-full text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">Start Aptitude Test <ChevronRight className="w-5 h-5 ml-2" /></button></div>
-      <div className="bg-white p-6 rounded-xl shadow-lg border hover:shadow-xl transition-shadow"><h2 className="text-2xl font-bold text-gray-900 mb-4">Analyze Personality</h2><p className="text-gray-600 mb-6">Write a short statement about what you love doing to get NLP insights.</p><button onClick={() => setCurrentPage('essay')} className="bg-purple-600 w-full text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center">Analyze Essay <ChevronRight className="w-5 h-5 ml-2" /></button></div>
-      <div className="bg-white p-6 rounded-xl shadow-lg border hover:shadow-xl transition-shadow"><h2 className="text-2xl font-bold text-gray-900 mb-4">Explore Careers</h2><p className="text-gray-600 mb-6">Browse our extensive database of career options with detailed paths.</p><button onClick={() => setCurrentPage('careers')} className="bg-green-600 w-full text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center">Browse Careers <ChevronRight className="w-5 h-5 ml-2" /></button></div>
+  );
+};
+
+// ─── ROADMAP PAGE (dedicated) ──────────────────────────────────────────────────
+const RoadmapPage = ({ userAge, userLocation, userEducation }) => {
+  const [career, setCareer] = useState('');
+  const [roadmap, setRoadmap] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const generateRoadmap = async () => {
+    if (!career.trim()) return;
+    setIsLoading(true); setError(null); setRoadmap(null);
+    try {
+      const res = await fetch(`${API_URL}/generate-roadmap`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ career, age: userAge, location: userLocation, education: userEducation })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setRoadmap(data.roadmap);
+    } catch (e) { setError(e.message); }
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Career Roadmap</h1>
+      <p className="text-gray-500 mb-6">Enter any career title and get a personalized 12-month step-by-step roadmap tailored to your profile.</p>
+      <div className="bg-white rounded-2xl p-6 shadow border">
+        <div className="flex gap-3">
+          <input value={career} onChange={e => setCareer(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && generateRoadmap()}
+            placeholder="e.g. Machine Learning Engineer, UI/UX Designer..."
+            className="flex-1 border-2 border-gray-200 rounded-xl p-3 focus:border-purple-500 focus:outline-none text-gray-800" />
+          <button onClick={generateRoadmap} disabled={isLoading || !career.trim()}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold rounded-xl hover:opacity-90 disabled:opacity-50 transition-all">
+            {isLoading ? <Loader className="animate-spin w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
+            {isLoading ? 'Generating...' : 'Generate'}
+          </button>
+        </div>
+        {error && <p className="mt-3 text-red-600 text-sm">❌ {error}</p>}
+      </div>
+      {roadmap && (
+        <div className="mt-6 bg-white rounded-2xl p-8 shadow border prose max-w-none">
+          {roadmap.split('\n').map((line, i) => {
+            if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-black text-gray-900 mb-4">{line.slice(2)}</h1>;
+            if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-purple-700 mt-6 mb-3">{line.slice(3)}</h2>;
+            if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-semibold text-blue-700 mt-4 mb-2">{line.slice(4)}</h3>;
+            if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="ml-4 text-gray-700 mb-1">{line.slice(2)}</li>;
+            if (line.trim() === '') return <div key={i} className="h-2" />;
+            return <p key={i} className="text-gray-700 mb-2">{line.split('**').map((p, pi) => pi % 2 === 1 ? <strong key={pi}>{p}</strong> : p)}</p>;
+          })}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, currentQuestion, handleAnswer, answers, handleNextQuestion, handleFinishTest, resetTest, userAge, setUserAge, userEducation, setUserEducation, userProfileSet, setUserProfileSet }) => {
   if (isLoading) return <div className="p-6 text-center">Loading Test...</div>;
@@ -662,7 +871,7 @@ const AdminPanel = ({ adminToken, setAdminToken, currentPage, adminStats, setAdm
 };
 
 const CareerCounselingSystem = () => {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [user, setUser] = useState(null); // Google OAuth user profile
   const [testResults, setTestResults] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -894,24 +1103,12 @@ const CareerCounselingSystem = () => {
     setUserProfileSet(false);
     setUserAge('');
     setUserEducation('');
-    setCurrentPage('aptitude');
   };
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard': return <Dashboard setCurrentPage={setCurrentPage} resetTest={resetTest} />;
-      case 'aptitude': return <AptitudeTest isLoading={isLoading} aptitudeQuestions={aptitudeQuestions} showResults={showResults} testResults={testResults} currentQuestion={currentQuestion} handleAnswer={handleAnswer} answers={answers} handleNextQuestion={handleNextQuestion} handleFinishTest={handleFinishTest} resetTest={resetTest} userAge={userAge} setUserAge={setUserAge} userEducation={userEducation} setUserEducation={setUserEducation} userProfileSet={userProfileSet} setUserProfileSet={setUserProfileSet} />;
-      case 'essay': return <NlpEssayScreen essayText={essayText} setEssayText={setEssayText} isAnalyzing={isAnalyzing} setIsAnalyzing={setIsAnalyzing} nlpResults={nlpResults} setNlpResults={setNlpResults} />;
-      case 'careers': return <CareerExplorer isLoading={isLoading} careerDatabase={careerDatabase} userLocation={userLocation} compareList={compareList} setCompareList={setCompareList} />;
-      case 'compare': return <CareerComparePage compareList={compareList} setCompareList={setCompareList} careerDatabase={careerDatabase} />;
-      case 'admin': return <AdminPanel adminToken={adminToken} setAdminToken={setAdminToken} currentPage={currentPage} adminStats={adminStats} setAdminStats={setAdminStats} adminUsers={adminUsers} setAdminUsers={setAdminUsers} adminLogs={adminLogs} setAdminLogs={setAdminLogs} />;
-      default: return <Dashboard setCurrentPage={setCurrentPage} resetTest={resetTest} />;
-    }
-  };
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} currentPage={currentPage} setCurrentPage={setCurrentPage} resetTest={resetTest} />
+      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} resetTest={resetTest} user={user} />
       <div className="flex-1 lg:pl-64 w-full">
         <div className="lg:hidden flex items-center justify-between h-16 px-4 bg-white border-b">
           <button onClick={() => setSidebarOpen(true)}><Menu className="w-6 h-6" /></button>
@@ -922,18 +1119,45 @@ const CareerCounselingSystem = () => {
           <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
             <MapPin className="w-4 h-4 text-indigo-500" />
             <span className="text-sm text-gray-600 font-medium">Region:</span>
-            <select
-              value={userLocation}
-              onChange={(e) => setUserLocation(e.target.value)}
-              className="text-sm font-semibold text-indigo-700 bg-transparent outline-none cursor-pointer"
-            >
+            <select value={userLocation} onChange={(e) => setUserLocation(e.target.value)}
+              className="text-sm font-semibold text-indigo-700 bg-transparent outline-none cursor-pointer">
               <option value="USA">United States</option>
               <option value="India">India</option>
               <option value="UK">United Kingdom</option>
             </select>
           </div>
         </div>
-        {renderPage()}
+
+        <Routes>
+          <Route path="/" element={<Homepage resetTest={resetTest} />} />
+          <Route path="/test" element={
+            <AptitudeTest isLoading={isLoading} aptitudeQuestions={aptitudeQuestions} showResults={showResults}
+              testResults={testResults} currentQuestion={currentQuestion} handleAnswer={handleAnswer}
+              answers={answers} handleNextQuestion={handleNextQuestion} handleFinishTest={handleFinishTest}
+              resetTest={resetTest} userAge={userAge} setUserAge={setUserAge} userEducation={userEducation}
+              setUserEducation={setUserEducation} userProfileSet={userProfileSet} setUserProfileSet={setUserProfileSet} />
+          } />
+          <Route path="/essay" element={
+            <NlpEssayScreen essayText={essayText} setEssayText={setEssayText} isAnalyzing={isAnalyzing}
+              setIsAnalyzing={setIsAnalyzing} nlpResults={nlpResults} setNlpResults={setNlpResults} />
+          } />
+          <Route path="/careers" element={
+            <CareerExplorer isLoading={isLoading} careerDatabase={careerDatabase} userLocation={userLocation}
+              compareList={compareList} setCompareList={setCompareList} />
+          } />
+          <Route path="/compare" element={
+            <CareerComparePage compareList={compareList} setCompareList={setCompareList} careerDatabase={careerDatabase} />
+          } />
+          <Route path="/roadmap" element={
+            <RoadmapPage userAge={userAge} userLocation={userLocation} userEducation={userEducation} />
+          } />
+          <Route path="/admin" element={
+            <AdminPanel adminToken={adminToken} setAdminToken={setAdminToken} adminStats={adminStats}
+              setAdminStats={setAdminStats} adminUsers={adminUsers} setAdminUsers={setAdminUsers}
+              adminLogs={adminLogs} setAdminLogs={setAdminLogs} />
+          } />
+          <Route path="*" element={<Homepage resetTest={resetTest} />} />
+        </Routes>
       </div>
 
       {/* Floating AI Coach Chat Widget */}
