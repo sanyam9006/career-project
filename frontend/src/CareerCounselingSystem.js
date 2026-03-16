@@ -371,13 +371,15 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation, compareList, 
 
 const NlpEssayScreen = ({ essayText, setEssayText, isAnalyzing, setIsAnalyzing, nlpResults, setNlpResults }) => {
   const [mbtiResult, setMbtiResult] = useState(null);
+  const [error, setError] = useState(null);
 
   const submitEssay = async () => {
     if (!essayText.trim()) return;
-    setIsAnalyzing(true); setMbtiResult(null);
+    setIsAnalyzing(true); setMbtiResult(null); setError(null);
     try {
       const res = await fetch(`${API_URL}/analyze-essay`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ essay: essayText }) });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setNlpResults(data);
       // Also get MBTI type
       if (data.personality_traits) {
@@ -385,7 +387,10 @@ const NlpEssayScreen = ({ essayText, setEssayText, isAnalyzing, setIsAnalyzing, 
         const mbtiData = await mbtiRes.json();
         setMbtiResult(mbtiData);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error(e); 
+      setError(e.message);
+    }
     setIsAnalyzing(false);
   };
 
@@ -395,6 +400,15 @@ const NlpEssayScreen = ({ essayText, setEssayText, isAnalyzing, setIsAnalyzing, 
       <p className="text-gray-600 mb-6">Write about your interests and how you approach challenges. AI will detect your personality traits, MBTI type, and best-fit careers.</p>
       {!nlpResults ? (
         <div className="bg-white p-6 rounded-xl shadow border">
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-start">
+              <span className="mr-2">❌</span>
+              <div>
+                <p className="font-bold">Analysis Failed</p>
+                <p className="text-sm">{error}</p>
+              </div>
+            </div>
+          )}
           <textarea className="w-full h-48 p-4 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none mb-4" placeholder="I enjoy solving complex problems and building things from scratch. I love research and independent work but also collaborate well in teams..." value={essayText} onChange={e => setEssayText(e.target.value)} />
           <button onClick={submitEssay} disabled={isAnalyzing} className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-semibold flex items-center">
             {isAnalyzing ? <><Loader className="animate-spin mr-2 w-5 h-5" /> Analyzing...</> : <><Brain className="mr-2 w-5 h-5" /> Analyze My Personality</>}

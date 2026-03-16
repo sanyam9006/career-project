@@ -53,10 +53,9 @@ class PersonalityAnalyzer:
 
         client = get_gemini_client()
         if not client:
-            return self._fallback_response(sentiment)
+             raise ValueError("Gemini API client not initialized. Check your API key.")
 
-        try:
-            prompt = f"""Analyze this career-planning essay and return ONLY a JSON object (no markdown, no backticks, just raw JSON) with these three keys:
+        prompt = f"""Analyze this career-planning essay and return ONLY a JSON object (no markdown, no backticks, just raw JSON) with these three keys:
 1. "top_interests": object mapping 2-3 career categories to confidence scores (0.0-1.0). Valid categories: {', '.join(self.career_categories)}
 2. "personality_traits": object mapping 3-4 traits to confidence scores (0.0-1.0). Example traits: {', '.join(self.personality_traits)}
 3. "career_recommendations": array of exactly 5 specific job titles that best match the user's profile.
@@ -65,39 +64,37 @@ Essay: "{essay}"
 
 Respond with ONLY the raw JSON object, no explanation."""
 
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=0.3,
-                    max_output_tokens=1024,
-                    response_mime_type="application/json"
-                )
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.3,
+                max_output_tokens=1024,
+                response_mime_type="application/json"
             )
+        )
 
-            raw = response.text.strip()
-            # Clean any accidental markdown fences
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-                raw = raw.strip()
+        raw = response.text.strip()
+        # Clean any accidental markdown fences
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
 
-            data = json.loads(raw)
-            return {
-                'sentiment': {
-                    'positive': round(sentiment['pos'], 2),
-                    'neutral': round(sentiment['neu'], 2),
-                    'negative': round(sentiment['neg'], 2)
-                },
-                'top_interests': data.get('top_interests', {}),
-                'personality_traits': data.get('personality_traits', {}),
-                'career_recommendations': data.get('career_recommendations', [])
-            }
+        data = json.loads(raw)
+        return {
+            'sentiment': {
+                'positive': round(sentiment['pos'], 2),
+                'neutral': round(sentiment['neu'], 2),
+                'negative': round(sentiment['neg'], 2)
+            },
+            'top_interests': data.get('top_interests', {}),
+            'personality_traits': data.get('personality_traits', {}),
+            'career_recommendations': data.get('career_recommendations', [])
+        }
 
-        except Exception as e:
-            print(f"Gemini essay analysis error: {e}")
-            return self._fallback_response(sentiment)
+
 
     def _fallback_response(self, sentiment):
         return {
