@@ -701,18 +701,31 @@ const CareerCounselingSystem = () => {
 
     const userMessage = { role: 'user', content: currentChatInput };
     const newContext = [...chatMessages, userMessage];
-    setChatMessages([...newContext, { role: 'model', content: '' }]);
     setCurrentChatInput('');
     setIsChatLoading(true);
 
+    // Show user message + empty AI bubble immediately
+    setChatMessages([...newContext, { role: 'model', content: '...' }]);
+
+    const callFallback = async () => {
+      const res = await fetch(`${API_URL}/chat-coach`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newContext })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      return data.reply || "I'm having trouble connecting right now. Please try again.";
+    };
+
     try {
+      // Attempt SSE streaming first
       const response = await fetch(`${API_URL}/chat-coach-stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newContext })
       });
 
-      if (!response.ok || !response.body) throw new Error('Stream failed');
+      if (!response.ok || !response.body) throw new Error(`Stream HTTP ${response.status}`);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -722,38 +735,38 @@ const CareerCounselingSystem = () => {
         const { done, value } = await reader.read();
         if (done) break;
         const text = decoder.decode(value, { stream: true });
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const payload = line.slice(6).trim();
-            if (payload === '[DONE]') break;
-            try {
-              const parsed = JSON.parse(payload);
-              if (parsed.token) {
-                streamedContent += parsed.token.replace(/\\n/g, '\n');
-                const snapshot = streamedContent;
-                setChatMessages(prev => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role: 'model', content: snapshot };
-                  return updated;
-                });
-              }
-            } catch {}
-          }
+        for (const line of text.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(payload);
+            if (parsed.token) {
+              streamedContent += parsed.token.replace(/\\n/g, '\n');
+              const snapshot = streamedContent;
+              setChatMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'model', content: snapshot };
+                return updated;
+              });
+            }
+          } catch { /* ignore malformed SSE line */ }
         }
       }
+
+      // If stream gave us nothing (Render buffering / gunicorn issue), fall back to normal endpoint
+      if (!streamedContent) {
+        const reply = await callFallback();
+        setChatMessages([...newContext, { role: 'model', content: reply }]);
+      }
+
     } catch (err) {
-      console.error('Stream error:', err);
-      // Fallback to non-streaming
+      console.warn('Streaming failed, using fallback:', err.message);
       try {
-        const res = await fetch(`${API_URL}/chat-coach`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: newContext })
-        });
-        const data = await res.json();
-        setChatMessages([...newContext, { role: 'model', content: data.reply || "I'm having trouble connecting right now." }]);
-      } catch {
-        setChatMessages([...newContext, { role: 'model', content: "An error occurred. Please try again." }]);
+        const reply = await callFallback();
+        setChatMessages([...newContext, { role: 'model', content: reply }]);
+      } catch (fallbackErr) {
+        setChatMessages([...newContext, { role: 'model', content: `⚠️ Backend unreachable. Please check that the Render service is running and the GEMINI_API_KEY is set in Render's environment variables.` }]);
       }
     }
     setIsChatLoading(false);
