@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Activity, ThumbsUp, ThumbsDown, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, ExternalLink, Scale, GitMerge } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Activity, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, ExternalLink, Scale } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL || 
   (window.location.hostname === 'localhost' 
@@ -731,9 +731,10 @@ const CareerCounselingSystem = () => {
               const parsed = JSON.parse(payload);
               if (parsed.token) {
                 streamedContent += parsed.token.replace(/\\n/g, '\n');
+                const snapshot = streamedContent;
                 setChatMessages(prev => {
                   const updated = [...prev];
-                  updated[updated.length - 1] = { role: 'model', content: streamedContent };
+                  updated[updated.length - 1] = { role: 'model', content: snapshot };
                   return updated;
                 });
               }
