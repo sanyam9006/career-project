@@ -712,8 +712,8 @@ const CareerCounselingSystem = () => {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newContext })
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       return data.reply || "I'm having trouble connecting right now. Please try again.";
     };
 
@@ -725,7 +725,11 @@ const CareerCounselingSystem = () => {
         body: JSON.stringify({ messages: newContext })
       });
 
-      if (!response.ok || !response.body) throw new Error(`Stream HTTP ${response.status}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Stream HTTP ${response.status}`);
+      }
+      if (!response.body) throw new Error('No response body');
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -766,7 +770,7 @@ const CareerCounselingSystem = () => {
         const reply = await callFallback();
         setChatMessages([...newContext, { role: 'model', content: reply }]);
       } catch (fallbackErr) {
-        setChatMessages([...newContext, { role: 'model', content: `⚠️ Backend unreachable. Please check that the Render service is running and the GEMINI_API_KEY is set in Render's environment variables.` }]);
+        setChatMessages([...newContext, { role: 'model', content: `❌ Error: ${fallbackErr.message}. (Please check your GEMINI_API_KEY and Render logs)` }]);
       }
     }
     setIsChatLoading(false);
