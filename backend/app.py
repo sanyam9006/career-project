@@ -8,13 +8,14 @@ Original file is located at
 """
 
 # app.py
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 from agarwalwork import DatabaseManager, AptitudeTestManager
 from sanyamwork import PersonalityAnalyzer, get_gemini_client
 import json
 import random
 import os
+import requests as http_requests
 from dotenv import load_dotenv
 from google.genai import types
 
@@ -346,6 +347,247 @@ def get_market_insights():
         "demand_trend": demand,
         "live_jobs": job_listings
     })
+
+# ─── STREAMING CHATBOT (SSE) ─────────────────────────────────────────────────
+
+@app.route('/chat-coach-stream', methods=['POST'])
+def chat_coach_stream():
+    """Streaming version of the AI Career Coach using Server-Sent Events."""
+    data = request.json
+    messages = data.get('messages', [])
+    if not messages:
+        return jsonify({"error": "Messages array is required"}), 400
+
+    client = get_gemini_client()
+    if not client:
+        return jsonify({"error": "Gemini API key not configured"}), 500
+
+    system = "You are CareerAI Coach, a professional and encouraging career counselor. Be concise (2-3 paragraphs max), warm, and use bullet points where helpful."
+    history_text = f"[SYSTEM]: {system}\n\n"
+    for msg in messages:
+        role = "User" if msg['role'] == 'user' else "CareerAI Coach"
+        history_text += f"{role}: {msg['content']}\n\n"
+    history_text += "CareerAI Coach:"
+
+    def generate():
+        try:
+            response_stream = client.models.generate_content_stream(
+                model="gemini-2.0-flash",
+                contents=history_text,
+                config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=1024)
+            )
+            for chunk in response_stream:
+                if chunk.text:
+                    # Escape newlines inside JSON to avoid breaking SSE
+                    safe = chunk.text.replace('\n', '\\n')
+                    yield f"data: {json.dumps({'token': safe})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            print(f"Stream error: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Access-Control-Allow-Origin': '*',
+        }
+    )
+
+
+# ─── ADAPTIVE APTITUDE QUESTION ───────────────────────────────────────────────
+
+@app.route('/aptitude-test/next-question', methods=['POST'])
+def get_next_adaptive_question():
+    """Returns the next best question based on current session performance."""
+    try:
+        data = request.json
+        session_score = data.get('session_score', 50)   # 0-100
+        answered_ids = data.get('answered_ids', [])
+
+        # Adaptive difficulty logic
+        if session_score >= 70:
+            difficulty = 'hard'
+        elif session_score >= 40:
+            difficulty = 'medium'
+        else:
+            difficulty = 'easy'
+
+        aptitude_cats = ['logical_reasoning', 'numerical_ability', 'verbal_ability', 'spatial_reasoning', 'abstract_reasoning']
+
+        # Exclude already answered questions and interest questions
+        if answered_ids:
+            placeholders = ','.join('?' * len(answered_ids))
+            query = f'''
+                SELECT question_id, category, difficulty, question_text, options, correct_answer, explanation
+                FROM questions
+                WHERE difficulty = ? AND category IN ({",".join("?" * len(aptitude_cats))})
+                AND question_id NOT IN ({placeholders})
+                ORDER BY RANDOM() LIMIT 1
+            '''
+            db_manager.cursor.execute(query, [difficulty] + aptitude_cats + answered_ids)
+        else:
+            query = f'''
+                SELECT question_id, category, difficulty, question_text, options, correct_answer, explanation
+                FROM questions
+                WHERE difficulty = ? AND category IN ({",".join("?" * len(aptitude_cats))})
+                ORDER BY RANDOM() LIMIT 1
+            '''
+            db_manager.cursor.execute(query, [difficulty] + aptitude_cats)
+
+        row = db_manager.cursor.fetchone()
+        if not row:
+            # Fallback to any unanswered question
+            db_manager.cursor.execute(
+                "SELECT question_id, category, difficulty, question_text, options, correct_answer, explanation FROM questions WHERE category != 'interest' ORDER BY RANDOM() LIMIT 1"
+            )
+            row = db_manager.cursor.fetchone()
+
+        if not row:
+            return jsonify({"done": True})
+
+        q = {
+            'question_id': row[0], 'category': row[1], 'difficulty': row[2],
+            'question': row[3], 'options': json.loads(row[4]),
+            'correct_answer': row[5], 'explanation': row[6],
+            'selected_difficulty': difficulty
+        }
+        # Don't expose answer to client
+        answer = q.pop('correct_answer')
+        explanation = q.pop('explanation')
+        q['_answer'] = answer  # Will be removed before sending
+        del q['_answer']
+
+        return jsonify({**q, 'target_difficulty': difficulty})
+    except Exception as e:
+        print(f"Adaptive question error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── LIVE JOB LISTINGS ────────────────────────────────────────────────────────
+
+@app.route('/live-jobs', methods=['GET'])
+def live_jobs():
+    """Fetch real job listings from JSearch API (RapidAPI) or return rich mock data."""
+    career = request.args.get('career', 'Software Engineer')
+    location = request.args.get('location', 'USA')
+    rapidapi_key = os.environ.get('RAPIDAPI_KEY')
+
+    if rapidapi_key:
+        try:
+            url = "https://jsearch.p.rapidapi.com/search"
+            params = {"query": f"{career} in {location}", "num_pages": "1", "page": "1"}
+            headers = {
+                "X-RapidAPI-Key": rapidapi_key,
+                "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
+            }
+            r = http_requests.get(url, headers=headers, params=params, timeout=8)
+            result = r.json()
+            jobs = []
+            for j in result.get('data', [])[:5]:
+                jobs.append({
+                    'title': j.get('job_title', career),
+                    'company': j.get('employer_name', 'Company'),
+                    'location': j.get('job_city', location),
+                    'type': j.get('job_employment_type', 'Full-time'),
+                    'posted': j.get('job_posted_at_datetime_utc', '')[:10],
+                    'apply_url': j.get('job_apply_link', '#'),
+                    'description': (j.get('job_description') or '')[:200] + '...'
+                })
+            return jsonify({"jobs": jobs, "source": "live"})
+        except Exception as e:
+            print(f"JSearch error: {e}")  # Fall through to mock
+
+    # Rich mock data
+    companies = {
+        'Technology': ['Google', 'Microsoft', 'Amazon', 'Meta', 'Apple', 'Stripe', 'Notion'],
+        'Healthcare': ['Apollo', 'Fortis', 'Narayana Health', 'Max Healthcare', 'Johnson & Johnson'],
+        'Finance': ['Goldman Sachs', 'JPMorgan', 'Deloitte', 'KPMG', 'Zerodha', 'PayTM'],
+        'default': ['TechFlow Inc', 'Global Systems', 'Apex Solutions', 'Pioneer Corp', 'NextGen Ltd']
+    }
+    category_key = 'default'
+    for key in companies:
+        if key.lower() in career.lower():
+            category_key = key
+            break
+    company_list = companies.get(category_key, companies['default'])
+
+    loc_map = {
+        'India': ['Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune'],
+        'UK': ['London', 'Manchester', 'Edinburgh', 'Birmingham'],
+        'USA': ['New York, NY', 'San Francisco, CA', 'Austin, TX', 'Seattle, WA', 'Remote'],
+    }
+    locs = loc_map.get(location, loc_map['USA'])
+    types_list = ['Full-time', 'Full-time', 'Full-time', 'Remote', 'Hybrid']
+
+    mock_jobs = []
+    for i in range(5):
+        days = random.randint(1, 21)
+        mock_jobs.append({
+            'title': career,
+            'company': random.choice(company_list),
+            'location': random.choice(locs),
+            'type': random.choice(types_list),
+            'posted': f"{days} day{'s' if days > 1 else ''} ago",
+            'apply_url': f"https://www.linkedin.com/jobs/search/?keywords={career.replace(' ', '+')}",
+            'description': f"Exciting opportunity for a {career} to join our team. Work on cutting-edge problems in a collaborative environment with competitive compensation."
+        })
+    return jsonify({"jobs": mock_jobs, "source": "mock"})
+
+
+# ─── MBTI PERSONALITY TYPE ────────────────────────────────────────────────────
+
+@app.route('/personality/mbti', methods=['POST'])
+def get_mbti_type():
+    """Determine MBTI personality type from essay analysis traits."""
+    try:
+        data = request.json
+        traits = data.get('traits', {})   # e.g. {"analytical": 0.9, "social": 0.3}
+        interests = data.get('interests', {})
+
+        # Simple trait-to-MBTI dimension mapping
+        E_score = traits.get('social', 0.5) + traits.get('leadership', 0.5) * 0.5
+        I_score = traits.get('analytical', 0.5) + traits.get('detail_oriented', 0.5) * 0.5
+        N_score = traits.get('creative', 0.5) + traits.get('adaptable', 0.5) * 0.4
+        S_score = traits.get('detail_oriented', 0.5) * 0.8
+        T_score = traits.get('analytical', 0.5) + traits.get('detail_oriented', 0.3)
+        F_score = traits.get('social', 0.5) + traits.get('creative', 0.3)
+        J_score = traits.get('leadership', 0.5) + traits.get('detail_oriented', 0.4)
+        P_score = traits.get('adaptable', 0.5) + traits.get('creative', 0.3)
+
+        mbti = (
+            ('E' if E_score > I_score else 'I') +
+            ('N' if N_score > S_score else 'S') +
+            ('T' if T_score > F_score else 'F') +
+            ('J' if J_score > P_score else 'P')
+        )
+
+        MBTI_PROFILES = {
+            'INTJ': {'name': 'The Architect', 'description': 'Strategic, independent thinkers who plan everything and love complex ideas.', 'emoji': '🏛️'},
+            'INTP': {'name': 'The Logician', 'description': 'Analytical problem-solvers who love theories and intellectual debates.', 'emoji': '🔬'},
+            'ENTJ': {'name': 'The Commander', 'description': 'Bold, natural leaders who find a way — or make one.', 'emoji': '👑'},
+            'ENTP': {'name': 'The Debater', 'description': 'Smart, curious innovators who can never resist an intellectual challenge.', 'emoji': '💡'},
+            'INFJ': {'name': 'The Advocate', 'description': 'Quiet visionaries with strong values who inspire others.', 'emoji': '🌱'},
+            'INFP': {'name': 'The Mediator', 'description': 'Imaginative idealists guided by deep values and a love for creativity.', 'emoji': '🎨'},
+            'ENFJ': {'name': 'The Protagonist', 'description': 'Charismatic, inspiring leaders who love to help others grow.', 'emoji': '🌟'},
+            'ENFP': {'name': 'The Campaigner', 'description': 'Enthusiastic, creative and sociable free spirits who can always find a reason to smile.', 'emoji': '🎉'},
+            'ISTJ': {'name': 'The Logistician', 'description': 'Practical, reliable and dutiful — they get things done.', 'emoji': '📋'},
+            'ISFJ': {'name': 'The Defender', 'description': 'Dedicated, warm protectors who are always ready to defend loved ones.', 'emoji': '🛡️'},
+            'ESTJ': {'name': 'The Executive', 'description': 'Excellent administrators who lead with tradition and order.', 'emoji': '⚖️'},
+            'ESFJ': {'name': 'The Consul', 'description': 'Caring, social people who love helping and organizing.', 'emoji': '🤝'},
+            'ISTP': {'name': 'The Virtuoso', 'description': 'Bold experimenters and master craftsmen with a love of tools.', 'emoji': '🔧'},
+            'ISFP': {'name': 'The Adventurer', 'description': 'Flexible, charming artists always ready to explore new things.', 'emoji': '🎵'},
+            'ESTP': {'name': 'The Entrepreneur', 'description': 'Smart, energetic and very perceptive — they love living on the edge.', 'emoji': '⚡'},
+            'ESFP': {'name': 'The Entertainer', 'description': 'Spontaneous, energetic, enthusiastic entertainers who love life.', 'emoji': '🎭'},
+        }
+
+        profile = MBTI_PROFILES.get(mbti, {'name': 'Unique Type', 'description': 'You have a rare combination of traits.', 'emoji': '✨'})
+        return jsonify({"mbti": mbti, **profile})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # --- ADMIN ENDPOINTS ---
 @app.route('/admin/login', methods=['POST'])

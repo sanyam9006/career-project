@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Activity, ThumbsUp, ThumbsDown, Edit3, MapPin, MessageSquare, Send } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Activity, ThumbsUp, ThumbsDown, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, ExternalLink, Scale, GitMerge } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL || 
   (window.location.hostname === 'localhost' 
@@ -17,6 +17,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, currentPage, setCurrentPage, res
       <button onClick={() => { setCurrentPage('aptitude'); setSidebarOpen(false); resetTest(); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'aptitude' ? 'bg-blue-700' : 'hover:bg-blue-800'}`}><TestTube className="w-5 h-5 mr-3" /> Aptitude Test</button>
       <button onClick={() => { setCurrentPage('essay'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'essay' ? 'bg-blue-700' : 'hover:bg-blue-800'}`}><Edit3 className="w-5 h-5 mr-3" /> Personality Essay</button>
       <button onClick={() => { setCurrentPage('careers'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'careers' ? 'bg-blue-700' : 'hover:bg-blue-800'}`}><Users className="w-5 h-5 mr-3" /> Career Explorer</button>
+      <button onClick={() => { setCurrentPage('compare'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'compare' ? 'bg-teal-700' : 'hover:bg-teal-800'}`}><Scale className="w-5 h-5 mr-3" /> Compare Careers</button>
       <div className="pt-8 mt-8 border-t border-blue-800">
         <button onClick={() => { setCurrentPage('admin'); setSidebarOpen(false); }} className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors ${currentPage === 'admin' ? 'bg-purple-700' : 'hover:bg-purple-800'}`}><Shield className="w-5 h-5 mr-3" /> Admin Panel</button>
       </div>
@@ -162,79 +163,106 @@ const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, 
   );
 };
 
-const CareerExplorer = ({ isLoading, careerDatabase, userLocation }) => {
+const CareerExplorer = ({ isLoading, careerDatabase, userLocation, compareList, setCompareList }) => {
   const [marketData, setMarketData] = useState(null);
   const [isMarketLoading, setIsMarketLoading] = useState(false);
   const [roadmapData, setRoadmapData] = useState(null);
   const [isRoadmapLoading, setIsRoadmapLoading] = useState(false);
+  const [liveJobs, setLiveJobs] = useState(null);
+  const [isJobsLoading, setIsJobsLoading] = useState(false);
+  const [activeJobsCareer, setActiveJobsCareer] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
 
   const viewMarketInsights = async (careerTitle) => {
-    setIsMarketLoading(true);
-    setMarketData(null);
+    setIsMarketLoading(true); setMarketData(null);
     try {
       const res = await fetch(`${API_URL}/market-insights?career=${encodeURIComponent(careerTitle)}&location=${encodeURIComponent(userLocation)}`);
-      const data = await res.json();
-      setMarketData(data);
-    } catch (e) {
-      console.error(e);
-    }
+      setMarketData(await res.json());
+    } catch (e) { console.error(e); }
     setIsMarketLoading(false);
   };
 
   const generateAIRoadmap = async (careerTitle) => {
-    setIsRoadmapLoading(true);
-    setRoadmapData({ career: careerTitle, content: null });
+    setIsRoadmapLoading(true); setRoadmapData({ career: careerTitle, content: null });
     try {
       const res = await fetch(`${API_URL}/generate-roadmap`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ career: careerTitle, location: userLocation })
       });
       const data = await res.json();
       setRoadmapData({ career: careerTitle, content: data.roadmap });
     } catch (e) {
-      console.error(e);
-      setRoadmapData({ career: careerTitle, content: "Error generating roadmap. Please try again later." });
+      setRoadmapData({ career: careerTitle, content: 'Error generating roadmap.' });
     }
     setIsRoadmapLoading(false);
   };
 
+  const viewLiveJobs = async (careerTitle) => {
+    setIsJobsLoading(true); setLiveJobs(null); setActiveJobsCareer(careerTitle);
+    try {
+      const res = await fetch(`${API_URL}/live-jobs?career=${encodeURIComponent(careerTitle)}&location=${encodeURIComponent(userLocation)}`);
+      const data = await res.json();
+      setLiveJobs(data.jobs || []);
+    } catch (e) { setLiveJobs([]); }
+    setIsJobsLoading(false);
+  };
+
+  const addToCompare = (career) => {
+    if (compareList.length >= 3) { alert('Maximum 3 careers to compare. Remove one first.'); return; }
+    if (compareList.find(c => c.title === career.title)) { alert('Already in comparison list.'); return; }
+    setCompareList([...compareList, career]);
+  };
+
+  const allCategories = ['All', ...Object.keys(careerDatabase || {})];
+  const filteredByCategory = filterCategory === 'All' ? careerDatabase : { [filterCategory]: (careerDatabase || {})[filterCategory] };
+  const filteredDb = Object.fromEntries(
+    Object.entries(filteredByCategory || {}).map(([cat, careers]) => [
+      cat, (careers || []).filter(c => !searchTerm || c.title.toLowerCase().includes(searchTerm.toLowerCase()) || c.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    ]).filter(([, careers]) => careers.length > 0)
+  );
+
   return (
     <div className="p-6 relative">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Career Explorer</h1>
-      {isLoading ? <p>Loading careers...</p> : Object.entries(careerDatabase || {}).map(([category, careers]) => (
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <h1 className="text-3xl font-bold text-gray-900">Career Explorer</h1>
+        <div className="flex gap-3 flex-wrap">
+          <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search careers..." className="border px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-48" />
+          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="border px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            {allCategories.map(c => <option key={c}>{c}</option>)}
+          </select>
+          {compareList.length > 0 && <span className="bg-teal-600 text-white px-3 py-2 rounded-lg text-sm font-semibold">{compareList.length} in compare</span>}
+        </div>
+      </div>
+      {isLoading ? <p>Loading careers...</p> : Object.entries(filteredDb).map(([category, careers]) => (
         <div key={category} className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-800 mb-4 capitalize">{category}</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.isArray(careers) && careers.map((career, index) => (
-              <div key={index} className="bg-white p-6 rounded-xl shadow-lg border hover:shadow-xl transition-shadow relative overflow-hidden group flex flex-col">
-                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="text-gray-400 hover:text-green-500 mx-1 transition-colors" title="Upvote"><ThumbsUp className="w-5 h-5" /></button>
-                  <button className="text-gray-400 hover:text-red-500 mx-1 transition-colors" title="Downvote"><ThumbsDown className="w-5 h-5" /></button>
+              <div key={index} className="bg-white p-6 rounded-xl shadow-lg border hover:shadow-xl transition-shadow relative flex flex-col">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="text-xl font-bold text-gray-900 pr-2 flex-1">{career.title}</h3>
+                  <span className={`text-xs px-2 py-1 rounded-full font-bold shrink-0 ${ career.growth === 'High' ? 'bg-green-100 text-green-700' : career.growth === 'Stable' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{career.growth}</span>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2 pr-12">{career.title}</h3>
                 <p className="text-gray-600 mb-4 text-sm flex-1">{career.description}</p>
                 <div className="space-y-2 text-sm">
-                  <div><span className="font-semibold">Salary:</span> {career.salary || 'N/A'}</div>
-                  <div><span className="font-semibold">Growth:</span> {career.growth || 'N/A'}</div>
+                  <div className="flex justify-between"><span className="text-gray-500">Salary</span><span className="font-semibold text-gray-800">{career.salary || 'N/A'}</span></div>
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {(career.skills || []).slice(0, 4).map((skill, skillIndex) => (
-                      <span key={skillIndex} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">{skill}</span>
+                    {(career.skills || []).slice(0, 4).map((skill, si) => (
+                      <span key={si} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">{skill}</span>
                     ))}
                   </div>
                   {career.regional_education && career.regional_education[userLocation] && (
-                    <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
-                      <div className="text-xs font-bold text-purple-800 mb-1 flex items-center"><MapPin className="w-3 h-3 mr-1" /> Education Path ({userLocation})</div>
-                      <div className="text-sm text-purple-900">{career.regional_education[userLocation]}</div>
+                    <div className="mt-2 p-2 bg-purple-50 rounded-lg border border-purple-100">
+                      <div className="text-xs font-bold text-purple-800 mb-1 flex items-center"><MapPin className="w-3 h-3 mr-1" /> Path ({userLocation})</div>
+                      <div className="text-xs text-purple-900">{career.regional_education[userLocation]}</div>
                     </div>
                   )}
-                  <div className="flex gap-2 mt-4">
-                    <button onClick={() => viewMarketInsights(career.title)} className="flex-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center">
-                      <TrendingUp className="w-4 h-4 mr-1" /> Market Data
-                    </button>
-                    <button onClick={() => generateAIRoadmap(career.title)} className="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center">
-                      <Brain className="w-4 h-4 mr-1" /> AI Roadmap
-                    </button>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <button onClick={() => viewMarketInsights(career.title)} className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center"><TrendingUp className="w-4 h-4 mr-1" /> Market</button>
+                    <button onClick={() => generateAIRoadmap(career.title)} className="bg-purple-50 text-purple-700 hover:bg-purple-100 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center"><Brain className="w-4 h-4 mr-1" /> Roadmap</button>
+                    <button onClick={() => viewLiveJobs(career.title)} className="bg-green-50 text-green-700 hover:bg-green-100 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center"><Briefcase className="w-4 h-4 mr-1" /> Live Jobs</button>
+                    <button onClick={() => addToCompare(career)} className="bg-teal-50 text-teal-700 hover:bg-teal-100 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center"><Scale className="w-4 h-4 mr-1" /> Compare</button>
                   </div>
                 </div>
               </div>
@@ -243,50 +271,68 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation }) => {
         </div>
       ))}
 
+      {/* Live Jobs Modal */}
+      {(isJobsLoading || liveJobs !== null) && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b flex justify-between items-center bg-green-600 text-white">
+              <h2 className="text-xl font-bold flex items-center"><Briefcase className="w-6 h-6 mr-2" /> Live Jobs: {activeJobsCareer}</h2>
+              <button onClick={() => { setLiveJobs(null); setIsJobsLoading(false); }} className="hover:bg-green-700 p-1 rounded-lg"><X className="w-6 h-6" /></button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {isJobsLoading ? (
+                <div className="flex flex-col items-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-green-600 mb-4" /><p className="text-green-600">Fetching latest job listings...</p></div>
+              ) : (
+                <div className="space-y-4">
+                  {(liveJobs || []).length === 0 ? <p className="text-gray-500 text-center py-8">No jobs found right now.</p> : (liveJobs || []).map((job, i) => (
+                    <div key={i} className="border rounded-xl p-4 hover:border-green-400 hover:shadow-md transition-all">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-bold text-gray-900">{job.title}</div>
+                          <div className="text-sm text-gray-600">{job.company} • {job.location}</div>
+                          <p className="text-xs text-gray-500 mt-2">{job.description}</p>
+                        </div>
+                        <div className="text-right ml-4 shrink-0">
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">{job.type}</span>
+                          <div className="text-xs text-gray-400 mt-1">{job.posted}</div>
+                        </div>
+                      </div>
+                      <a href={job.apply_url} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center w-full bg-green-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors">
+                        Apply Now <ExternalLink className="w-4 h-4 ml-1" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Market Data Modal */}
       {(isMarketLoading || marketData) && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-4 border-b flex justify-between items-center bg-indigo-600 text-white">
               <h2 className="text-xl font-bold flex items-center"><TrendingUp className="w-6 h-6 mr-2" /> Market Insights: {marketData ? marketData.career : 'Loading...'}</h2>
-              <button onClick={() => { setMarketData(null); setIsMarketLoading(false); }} className="hover:bg-indigo-700 p-1 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
+              <button onClick={() => { setMarketData(null); setIsMarketLoading(false); }} className="hover:bg-indigo-700 p-1 rounded-lg"><X className="w-6 h-6" /></button>
             </div>
             <div className="p-6 overflow-y-auto">
-              {isMarketLoading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600 mb-4"></div>
-                  <p className="text-indigo-600 font-medium">Scanning live jobs in {userLocation}...</p>
+              {isMarketLoading ? <div className="flex flex-col items-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600 mb-4" /><p className="text-indigo-600">Fetching market data...</p></div>
+              : marketData && <div>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="bg-indigo-50 p-4 rounded-xl text-center"><div className="text-xs text-indigo-500 uppercase font-bold mb-1">Region</div><div className="font-bold text-lg">{marketData.location}</div></div>
+                  <div className="bg-green-50 p-4 rounded-xl text-center"><div className="text-xs text-green-600 uppercase font-bold mb-1">Avg Salary</div><div className="font-bold text-lg text-green-700">{marketData.average_salary_range}</div></div>
+                  <div className="bg-blue-50 p-4 rounded-xl text-center"><div className="text-xs text-blue-500 uppercase font-bold mb-1">Demand</div><div className="font-bold text-lg text-blue-700">{marketData.demand_trend}</div></div>
                 </div>
-              ) : marketData && (
-                <div>
-                  <div className="grid grid-cols-3 gap-4 mb-8">
-                    <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-center">
-                      <div className="text-xs text-indigo-500 uppercase font-bold tracking-wider mb-1">Region</div>
-                      <div className="font-semibold text-indigo-900 text-lg">{marketData.location}</div>
-                    </div>
-                    <div className="bg-green-50 p-4 rounded-xl border border-green-100 text-center">
-                      <div className="text-xs text-green-600 uppercase font-bold tracking-wider mb-1">Avg Salary</div>
-                      <div className="font-semibold text-green-700 text-lg">{marketData.average_salary_range}</div>
-                    </div>
-                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-center">
-                      <div className="text-xs text-blue-500 uppercase font-bold tracking-wider mb-1">Market Demand</div>
-                      <div className="font-semibold text-blue-700 text-lg">{marketData.demand_trend}</div>
-                    </div>
+                <h3 className="font-bold mb-3">Sample Job Listings ({marketData.active_openings} total openings)</h3>
+                <div className="space-y-2">{(marketData.live_jobs || []).map((job, idx) => (
+                  <div key={idx} className="border p-3 rounded-lg hover:border-indigo-300 transition-all">
+                    <div className="font-semibold text-gray-900">{job.title}</div>
+                    <div className="text-sm text-gray-500">{job.company} • {job.location} • {job.posted}</div>
                   </div>
-                  <h3 className="font-bold text-gray-800 mb-4 flex items-center"><Activity className="w-5 h-5 mr-2 text-indigo-500" /> Live Job Openings ({marketData.active_openings} total)</h3>
-                  <div className="space-y-3">
-                    {(marketData.live_jobs || []).map((job, idx) => (
-                      <div key={idx} className="border border-gray-200 p-4 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer group">
-                        <div className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">{job.title}</div>
-                        <div className="text-sm text-gray-600 flex justify-between mt-2">
-                          <span className="flex items-center"><MapPin className="w-4 h-4 mr-1 text-gray-400" /> {job.company} • {job.location}</span>
-                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{job.posted}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                ))}</div>
+              </div>}
             </div>
           </div>
         </div>
@@ -295,30 +341,23 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation }) => {
       {/* AI Roadmap Modal */}
       {(isRoadmapLoading || roadmapData) && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-4 border-b flex justify-between items-center bg-purple-600 text-white">
-              <h2 className="text-xl font-bold flex items-center"><Brain className="w-6 h-6 mr-2" /> AI Roadmap: {roadmapData ? roadmapData.career : 'Loading...'}</h2>
-              <button onClick={() => { setRoadmapData(null); setIsRoadmapLoading(false); }} className="hover:bg-purple-700 p-1 rounded-lg transition-colors"><X className="w-6 h-6" /></button>
+              <h2 className="text-xl font-bold flex items-center"><Brain className="w-6 h-6 mr-2" /> AI Roadmap: {roadmapData ? roadmapData.career : ''}</h2>
+              <button onClick={() => { setRoadmapData(null); setIsRoadmapLoading(false); }} className="hover:bg-purple-700 p-1 rounded-lg"><X className="w-6 h-6" /></button>
             </div>
-            <div className="p-6 overflow-y-auto w-full">
-              {isRoadmapLoading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mb-4"></div>
-                  <p className="text-purple-600 font-medium">Gemini AI is generating your personalized 12-month roadmap...</p>
-                </div>
-              ) : roadmapData && roadmapData.content && (
-                <div className="font-sans text-gray-800 leading-relaxed">
+            <div className="p-6 overflow-y-auto">
+              {isRoadmapLoading ? <div className="flex flex-col items-center py-12"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mb-4" /><p className="text-purple-600">Generating AI roadmap...</p></div>
+              : roadmapData?.content && (
+                <div className="text-gray-800 leading-relaxed">
                   {roadmapData.content.split('\n').map((line, i) => {
-                    if (line.startsWith('### ')) return <h4 key={i} className="text-lg font-bold text-gray-900 mt-4 mb-2">{line.replace('### ', '')}</h4>;
-                    if (line.startsWith('## ')) return <h3 key={i} className="text-xl font-bold text-purple-800 mt-6 mb-3 border-b pb-1">{line.replace('## ', '')}</h3>;
-                    if (line.startsWith('# ')) return <h2 key={i} className="text-2xl font-bold text-gray-900 mt-2 mb-4">{line.replace('# ', '')}</h2>;
-                    if (line.startsWith('* **') || line.startsWith('- **')) {
-                      const parts = line.split('**');
-                      return <li key={i} className="ml-5 mb-2 list-disc"><strong>{parts[1]}</strong>{parts.slice(2).join('**')}</li>;
-                    }
-                    if (line.startsWith('* ') || line.startsWith('- ')) return <li key={i} className="ml-5 mb-1 list-disc">{line.substring(2)}</li>;
-                    if (line.trim() === '') return <br key={i} />;
-                    return <p key={i} className="mb-2">{line.split('**').map((part, index) => index % 2 === 1 ? <strong key={index}>{part}</strong> : part)}</p>;
+                    if (line.startsWith('### ')) return <h4 key={i} className="text-lg font-bold mt-4 mb-2">{line.replace('### ','')}</h4>;
+                    if (line.startsWith('## ')) return <h3 key={i} className="text-xl font-bold text-purple-800 mt-5 mb-2 border-b pb-1">{line.replace('## ','')}</h3>;
+                    if (line.startsWith('# ')) return <h2 key={i} className="text-2xl font-bold mt-2 mb-3">{line.replace('# ','')}</h2>;
+                    if (line.startsWith('- **') || line.startsWith('* **')) { const p = line.split('**'); return <li key={i} className="ml-5 mb-1 list-disc"><strong>{p[1]}</strong>{p.slice(2).join('**')}</li>; }
+                    if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="ml-5 mb-1 list-disc">{line.substring(2)}</li>;
+                    if (!line.trim()) return <br key={i} />;
+                    return <p key={i} className="mb-2">{line.split('**').map((p,pi) => pi%2===1 ? <strong key={pi}>{p}</strong> : p)}</p>;
                   })}
                 </div>
               )}
@@ -331,82 +370,167 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation }) => {
 };
 
 const NlpEssayScreen = ({ essayText, setEssayText, isAnalyzing, setIsAnalyzing, nlpResults, setNlpResults }) => {
+  const [mbtiResult, setMbtiResult] = useState(null);
+
   const submitEssay = async () => {
     if (!essayText.trim()) return;
-    setIsAnalyzing(true);
+    setIsAnalyzing(true); setMbtiResult(null);
     try {
-      const res = await fetch(`${API_URL}/analyze-essay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ essay: essayText })
-      });
+      const res = await fetch(`${API_URL}/analyze-essay`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ essay: essayText }) });
       const data = await res.json();
       setNlpResults(data);
-    } catch (e) {
-      console.error("NLP Analysis failed:", e);
-    } finally {
-      setIsAnalyzing(false);
-    }
+      // Also get MBTI type
+      if (data.personality_traits) {
+        const mbtiRes = await fetch(`${API_URL}/personality/mbti`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ traits: data.personality_traits }) });
+        const mbtiData = await mbtiRes.json();
+        setMbtiResult(mbtiData);
+      }
+    } catch (e) { console.error(e); }
+    setIsAnalyzing(false);
   };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">Personality Profiler</h1>
-      <p className="text-gray-600 mb-8">Write a short paragraph about your interests, hobbies, and how you approach challenges. Our NLP AI will analyze your personality traits to recommend suitable fields.</p>
-
+      <h1 className="text-3xl font-bold text-gray-900 mb-2">Personality Profiler</h1>
+      <p className="text-gray-600 mb-6">Write about your interests and how you approach challenges. AI will detect your personality traits, MBTI type, and best-fit careers.</p>
       {!nlpResults ? (
         <div className="bg-white p-6 rounded-xl shadow border">
-          <textarea
-            className="w-full h-48 p-4 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none mb-4"
-            placeholder="I really enjoy solving complex puzzles and building things from scratch. I work well in teams but also like independent research..."
-            value={essayText}
-            onChange={(e) => setEssayText(e.target.value)}
-          ></textarea>
-          <button
-            onClick={submitEssay}
-            disabled={isAnalyzing}
-            className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition w-full md:w-auto font-semibold shadow flex items-center justify-center disable:opacity-75"
-          >
-            {isAnalyzing ? "Analyzing..." : "Analyze My Personality"} <Brain className="ml-2 w-5 h-5" />
+          <textarea className="w-full h-48 p-4 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none mb-4" placeholder="I enjoy solving complex problems and building things from scratch. I love research and independent work but also collaborate well in teams..." value={essayText} onChange={e => setEssayText(e.target.value)} />
+          <button onClick={submitEssay} disabled={isAnalyzing} className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-semibold flex items-center">
+            {isAnalyzing ? <><Loader className="animate-spin mr-2 w-5 h-5" /> Analyzing...</> : <><Brain className="mr-2 w-5 h-5" /> Analyze My Personality</>}
           </button>
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl shadow border">
-            <h2 className="text-2xl font-bold mb-4 border-b pb-2">Your Personality Insights</h2>
-            <div className="grid md:grid-cols-2 gap-8">
+          {/* MBTI Card */}
+          {mbtiResult && (
+            <div className="bg-gradient-to-r from-violet-600 to-purple-700 text-white p-6 rounded-2xl shadow-xl flex items-center gap-6">
+              <div className="text-6xl">{mbtiResult.emoji}</div>
               <div>
-                <h3 className="font-semibold text-lg mb-3 flex items-center text-purple-700"><TrendingUp className="mr-2" /> Predicted Interests</h3>
-                <ul className="space-y-2">
+                <div className="text-sm font-semibold text-purple-200 uppercase tracking-widest mb-1">Your MBTI Type</div>
+                <div className="text-4xl font-black mb-1">{mbtiResult.mbti}</div>
+                <div className="text-xl font-bold text-purple-100">{mbtiResult.name}</div>
+                <p className="text-purple-200 text-sm mt-1">{mbtiResult.description}</p>
+              </div>
+            </div>
+          )}
+          <div className="bg-white p-6 rounded-xl shadow border">
+            <h2 className="text-xl font-bold mb-4 border-b pb-2">Detailed Analysis</h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center text-purple-700"><TrendingUp className="mr-2 w-4 h-4" /> Predicted Interests</h3>
+                <div className="space-y-2">
                   {Object.entries(nlpResults.top_interests || {}).map(([interest, score]) => (
-                    <li key={interest} className="flex justify-between items-center bg-purple-50 p-2 rounded">
-                      <span>{interest}</span>
-                      <span className="font-bold text-purple-700">{Math.round(score * 100)}%</span>
-                    </li>
+                    <div key={interest}>
+                      <div className="flex justify-between text-sm mb-1"><span className="capitalize">{interest}</span><span className="font-bold text-purple-700">{Math.round(score * 100)}%</span></div>
+                      <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-purple-500 h-2 rounded-full" style={{width: `${Math.round(score * 100)}%`}} /></div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
               <div>
-                <h3 className="font-semibold text-lg mb-3 flex items-center text-blue-700"><User className="mr-2" /> Key Traits Detected</h3>
+                <h3 className="font-semibold mb-3 flex items-center text-blue-700"><User className="mr-2 w-4 h-4" /> Key Traits</h3>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(nlpResults.personality_traits || {}).map(([trait, score]) => (
-                    <div key={trait} className="bg-blue-100 border border-blue-200 text-blue-800 px-3 py-1 rounded-full text-sm capitalize font-medium flex items-center shadow-sm">
-                      {trait.replace('_', ' ')} <span className="ml-2 text-xs bg-white text-blue-600 rounded px-1">{Math.round(score * 100)}%</span>
+                    <div key={trait} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm capitalize font-medium">
+                      {trait.replace('_', ' ')} <span className="text-xs text-blue-500">{Math.round(score * 100)}%</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
           </div>
-          <div className="bg-gradient-to-r from-purple-800 to-indigo-900 text-white p-6 rounded-xl shadow-lg">
-            <h2 className="text-xl font-bold mb-4">Recommended Career Fields</h2>
-            <div className="flex flex-wrap gap-3">
-              {nlpResults.career_recommendations?.map((rec, i) => (
-                <span key={i} className="bg-white/20 px-4 py-2 rounded-lg font-medium backdrop-blur-sm">{rec}</span>
-              ))}
+          <div className="bg-gradient-to-r from-indigo-800 to-purple-900 text-white p-6 rounded-xl">
+            <h2 className="text-lg font-bold mb-3">Best Career Fields For You</h2>
+            <div className="flex flex-wrap gap-2">
+              {nlpResults.career_recommendations?.map((rec, i) => <span key={i} className="bg-white/15 px-4 py-2 rounded-lg font-medium">{rec}</span>)}
             </div>
           </div>
-          <button onClick={() => { setNlpResults(null); setEssayText(''); }} className="text-purple-600 font-semibold hover:underline">Write another essay</button>
+          <button onClick={() => { setNlpResults(null); setEssayText(''); setMbtiResult(null); }} className="text-purple-600 font-semibold hover:underline">Write another essay ↩</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CareerComparePage = ({ compareList, setCompareList, careerDatabase }) => {
+  const allCareers = Object.values(careerDatabase || {}).flat();
+  const [search, setSearch] = useState('');
+  const filtered = allCareers.filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
+
+  const skillsFor = (career) => (career.skills || []).slice(0, 4);
+  const growthColor = g => g === 'High' ? 'text-green-600 bg-green-50' : g === 'Stable' ? 'text-blue-600 bg-blue-50' : 'text-yellow-600 bg-yellow-50';
+
+  return (
+    <div className="p-6">
+      <h1 className="text-3xl font-bold mb-2">Compare Careers</h1>
+      <p className="text-gray-600 mb-6">Select up to 3 careers to compare side-by-side. Use the Career Explorer to add them, or search here.</p>
+
+      {/* Search to add */}
+      <div className="bg-white rounded-xl shadow border p-4 mb-8">
+        <h3 className="font-semibold mb-3 text-gray-800">Add careers to compare ({compareList.length}/3)</h3>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search a career to add..." className="border px-3 py-2 rounded-lg text-sm w-full max-w-sm focus:ring-2 focus:ring-teal-500 outline-none mb-3" />
+        {search && (
+          <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+            {filtered.slice(0, 10).map((c, i) => (
+              <button key={i} onClick={() => { if (compareList.length < 3 && !compareList.find(x => x.title === c.title)) { setCompareList([...compareList, c]); setSearch(''); } }} className="text-sm bg-teal-50 text-teal-700 hover:bg-teal-100 px-3 py-1 rounded-full border border-teal-200 transition">
+                {c.title} <span className="text-teal-400">+</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {compareList.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {compareList.map((c, i) => (
+              <span key={i} className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2">
+                {c.title}
+                <button onClick={() => setCompareList(compareList.filter(x => x.title !== c.title))} className="text-teal-500 hover:text-red-500 font-bold">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Comparison Table */}
+      {compareList.length === 0 ? (
+        <div className="text-center py-20 text-gray-400">
+          <Scale className="w-16 h-16 mx-auto mb-4 opacity-30" />
+          <p className="text-xl">No careers selected yet</p>
+          <p className="text-sm mt-2">Go to Career Explorer and click "Compare" on any career card</p>
+        </div>
+      ) : (
+        <div className={`grid gap-6`} style={{gridTemplateColumns: `repeat(${compareList.length}, minmax(0, 1fr))`}}>
+          {compareList.map((career, i) => (
+            <div key={i} className="bg-white rounded-2xl shadow-lg border-2 border-teal-100 flex flex-col overflow-hidden">
+              <div className="bg-gradient-to-br from-teal-500 to-teal-700 p-5 text-white">
+                <div className="flex justify-between items-start">
+                  <h3 className="text-xl font-bold">{career.title}</h3>
+                  <button onClick={() => setCompareList(compareList.filter(c => c.title !== career.title))} className="text-white/60 hover:text-white"><X className="w-4 h-4" /></button>
+                </div>
+                <p className="text-teal-100 text-xs mt-1">{career.category}</p>
+              </div>
+              <div className="p-5 space-y-4 flex-1">
+                <div>
+                  <div className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Salary Range</div>
+                  <div className="text-lg font-bold text-gray-900">{career.salary || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Growth</div>
+                  <span className={`text-sm font-bold px-3 py-1 rounded-full ${growthColor(career.growth)}`}>{career.growth || 'N/A'}</span>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-2">Top Skills</div>
+                  <div className="flex flex-wrap gap-1">
+                    {skillsFor(career).map((s, si) => <span key={si} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{s}</span>)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">About</div>
+                  <p className="text-sm text-gray-600">{career.description}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -553,6 +677,9 @@ const CareerCounselingSystem = () => {
   const [userEducation, setUserEducation] = useState('');
   const [userProfileSet, setUserProfileSet] = useState(false);
 
+  // Compare Careers State
+  const [compareList, setCompareList] = useState([]);
+
   // AI Coach State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([
@@ -571,28 +698,62 @@ const CareerCounselingSystem = () => {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!currentChatInput.trim() || isChatLoading) return;
-    
+
     const userMessage = { role: 'user', content: currentChatInput };
     const newContext = [...chatMessages, userMessage];
-    setChatMessages(newContext);
-    setCurrentChatInput("");
+    setChatMessages([...newContext, { role: 'model', content: '' }]);
+    setCurrentChatInput('');
     setIsChatLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/chat-coach`, {
+      const response = await fetch(`${API_URL}/chat-coach-stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newContext })
       });
-      const data = await res.json();
-      if (data.reply) {
-        setChatMessages([...newContext, { role: 'model', content: data.reply }]);
-      } else {
-        setChatMessages([...newContext, { role: 'model', content: "I'm having trouble connecting to my brain right now. Please try again later." }]);
+
+      if (!response.ok || !response.body) throw new Error('Stream failed');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamedContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        const lines = text.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const payload = line.slice(6).trim();
+            if (payload === '[DONE]') break;
+            try {
+              const parsed = JSON.parse(payload);
+              if (parsed.token) {
+                streamedContent += parsed.token.replace(/\\n/g, '\n');
+                setChatMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role: 'model', content: streamedContent };
+                  return updated;
+                });
+              }
+            } catch {}
+          }
+        }
       }
-    } catch (e) {
-      console.error(e);
-      setChatMessages([...newContext, { role: 'model', content: "An error occurred while sending your message." }]);
+    } catch (err) {
+      console.error('Stream error:', err);
+      // Fallback to non-streaming
+      try {
+        const res = await fetch(`${API_URL}/chat-coach`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: newContext })
+        });
+        const data = await res.json();
+        setChatMessages([...newContext, { role: 'model', content: data.reply || "I'm having trouble connecting right now." }]);
+      } catch {
+        setChatMessages([...newContext, { role: 'model', content: "An error occurred. Please try again." }]);
+      }
     }
     setIsChatLoading(false);
   };
@@ -709,7 +870,8 @@ const CareerCounselingSystem = () => {
       case 'dashboard': return <Dashboard setCurrentPage={setCurrentPage} resetTest={resetTest} />;
       case 'aptitude': return <AptitudeTest isLoading={isLoading} aptitudeQuestions={aptitudeQuestions} showResults={showResults} testResults={testResults} currentQuestion={currentQuestion} handleAnswer={handleAnswer} answers={answers} handleNextQuestion={handleNextQuestion} handleFinishTest={handleFinishTest} resetTest={resetTest} userAge={userAge} setUserAge={setUserAge} userEducation={userEducation} setUserEducation={setUserEducation} userProfileSet={userProfileSet} setUserProfileSet={setUserProfileSet} />;
       case 'essay': return <NlpEssayScreen essayText={essayText} setEssayText={setEssayText} isAnalyzing={isAnalyzing} setIsAnalyzing={setIsAnalyzing} nlpResults={nlpResults} setNlpResults={setNlpResults} />;
-      case 'careers': return <CareerExplorer isLoading={isLoading} careerDatabase={careerDatabase} userLocation={userLocation} />;
+      case 'careers': return <CareerExplorer isLoading={isLoading} careerDatabase={careerDatabase} userLocation={userLocation} compareList={compareList} setCompareList={setCompareList} />;
+      case 'compare': return <CareerComparePage compareList={compareList} setCompareList={setCompareList} careerDatabase={careerDatabase} />;
       case 'admin': return <AdminPanel adminToken={adminToken} setAdminToken={setAdminToken} currentPage={currentPage} adminStats={adminStats} setAdminStats={setAdminStats} adminUsers={adminUsers} setAdminUsers={setAdminUsers} adminLogs={adminLogs} setAdminLogs={setAdminLogs} />;
       default: return <Dashboard setCurrentPage={setCurrentPage} resetTest={resetTest} />;
     }
