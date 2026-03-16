@@ -65,7 +65,7 @@ Essay: "{essay}"
 Respond with ONLY the raw JSON object, no explanation."""
 
         response = client.models.generate_content(
-            model="gemini-3.1-flash-lite",
+            model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.3,

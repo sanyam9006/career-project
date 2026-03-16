@@ -158,7 +158,7 @@ For each career recommendation, respond ONLY with a JSON array of 5 objects. Eac
 Return ONLY the raw JSON array, no explanation, no markdown."""
 
         response = client.models.generate_content(
-            model="gemini-3.1-flash-lite",
+            model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.3,
@@ -241,7 +241,7 @@ def generate_roadmap():
         In each section, give 3-4 concrete, actionable steps tailored to the user's age, background, and location. Be specific about courses, certifications, and projects to build."""
         
         response = client.models.generate_content(
-            model="gemini-3.1-flash-lite",
+            model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(temperature=0.5, max_output_tokens=2048)
         )
@@ -275,7 +275,7 @@ def chat_coach():
         history_text += "CareerAI Coach:"
         
         response = client.models.generate_content(
-            model="gemini-3.1-flash-lite",
+            model="gemini-2.0-flash",
             contents=history_text,
             config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=1024)
         )
@@ -372,7 +372,7 @@ def chat_coach_stream():
     def generate():
         try:
             response_stream = client.models.generate_content_stream(
-                model="gemini-3.1-flash-lite",
+                model="gemini-2.0-flash",
                 contents=history_text,
                 config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=1024)
             )
