@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useNavigate, Routes, Route } from "react-router-dom";
+import { NavLink, useNavigate, Routes, Route, useLocation } from "react-router-dom";
 import { User, Brain, TrendingUp, Home, TestTube, Users, Menu, X, Shield, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, Scale, Sparkles, Zap, Target, ArrowRight, ExternalLink, Activity } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL ||
@@ -75,122 +75,133 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, resetTest, user }) => (
 const Homepage = ({ resetTest }) => {
   const navigate = useNavigate();
   const stats = [
-    { value: '60+', label: 'Career Paths' },
-    { value: 'AI', label: 'Powered Engine' },
-    { value: 'MBTI', label: 'Personality Mapping' },
-    { value: 'Free', label: 'Forever' },
+    { value: '10 min', label: 'to get your results' },
+    { value: 'Free', label: 'no sign-up needed' },
+    { value: 'MBTI', label: 'personality mapping' },
+    { value: 'AI', label: 'career roadmaps' },
   ];
   const features = [
-    { icon: <TestTube className="w-8 h-8" />, title: 'Adaptive Aptitude Test', desc: 'Smart 20-question assessment that adjusts difficulty based on your performance to give personalized results.', color: 'from-blue-500 to-cyan-500', link: '/test' },
-    { icon: <Brain className="w-8 h-8" />, title: 'Personality Profiler', desc: 'Write about your passions and our AI instantly maps your text to one of 16 MBTI personality types.', color: 'from-purple-500 to-pink-500', link: '/essay' },
-    { icon: <TrendingUp className="w-8 h-8" />, title: 'AI Career Roadmaps', desc: 'Get a 12-month step-by-step roadmap for any career, tailored to your age, education, and location.', color: 'from-orange-500 to-rose-500', link: '/careers' },
+    {
+      icon: <TestTube className="w-8 h-8" />,
+      title: 'Not sure where to start?',
+      desc: 'Take our short adaptive test. It asks 20 questions, gets smarter as you go, and gives you a real picture of what you\'re good at.',
+      color: 'from-blue-500 to-cyan-500',
+      link: '/test',
+      cta: 'Take the test →'
+    },
+    {
+      icon: <Brain className="w-8 h-8" />,
+      title: 'What kind of person are you?',
+      desc: 'Just write a few sentences about what excites you. Our AI reads it and tells you your personality type, your strengths, and careers you\'d actually enjoy.',
+      color: 'from-purple-500 to-pink-500',
+      link: '/essay',
+      cta: 'Try it free →'
+    },
+    {
+      icon: <TrendingUp className="w-8 h-8" />,
+      title: 'Got a career in mind?',
+      desc: 'Tell us what you want to do and we\'ll build you a step-by-step 12-month plan — with real skills, courses, and milestones to hit.',
+      color: 'from-orange-500 to-rose-500',
+      link: '/roadmap',
+      cta: 'Build my roadmap →'
+    },
   ];
   const steps = [
-    { num: '01', title: 'Take the Test', desc: 'Answer 20 adaptive questions in under 10 minutes.' },
-    { num: '02', title: 'Get Your Profile', desc: 'AI analyzes your scores to reveal your strengths, MBTI type, and ideal industries.' },
-    { num: '03', title: 'Build Your Path', desc: 'Explore careers, compare options, and generate a personalized 12-month roadmap.' },
+    { num: '01', title: 'Answer 20 questions', desc: 'No essays, no forms. Just quick honest questions about how you think and what you enjoy.' },
+    { num: '02', title: 'See your real strengths', desc: 'Get a plain-English breakdown of your personality type, top skills, and best-fit industries.' },
+    { num: '03', title: 'Pick a path, not a guess', desc: 'Explore careers that actually match you, compare them side-by-side, and generate your personalized roadmap.' },
   ];
   return (
     <div className="min-h-screen">
       {/* Hero */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-purple-950">
-        {/* Animated orbs */}
         <div className="absolute top-20 left-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-20 right-20 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl" />
 
-        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur rounded-full text-white/80 text-sm font-medium mb-8 border border-white/20">
+        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur rounded-full text-white/70 text-sm mb-8 border border-white/20">
             <Sparkles className="w-4 h-4 text-yellow-400" />
-            Powered by Google Gemini AI
+            Made for students, freshers &amp; career switchers
           </div>
-          <h1 className="text-5xl md:text-7xl font-black text-white leading-tight mb-6">
-            Discover Your
-            <span className="block bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">Perfect Career</span>
-            with AI.
+          <h1 className="text-5xl md:text-6xl font-black text-white leading-tight mb-5">
+            Finally figure out<br />
+            <span className="bg-gradient-to-r from-purple-400 via-pink-300 to-blue-400 bg-clip-text text-transparent">what you actually want to do.</span>
           </h1>
-          <p className="text-xl md:text-2xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Take a 10-minute adaptive aptitude test, map your personality to an MBTI type, and get a personalized career roadmap — completely free.
+          <p className="text-lg md:text-xl text-white/60 max-w-xl mx-auto mb-10 leading-relaxed">
+            Answer a short test, write what you love, and get a real career plan built for you — not a generic list from Google.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button onClick={() => { resetTest(); navigate('/test'); }}
-              className="group flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-lg rounded-2xl hover:from-purple-500 hover:to-blue-500 transition-all shadow-lg shadow-purple-900/50 hover:scale-105">
-              <Zap className="w-5 h-5 group-hover:animate-bounce" /> Start Free Test
+              className="group flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-lg rounded-2xl hover:from-purple-500 hover:to-blue-500 transition-all shadow-xl hover:scale-105">
+              <Zap className="w-5 h-5" /> Take the free test
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <button onClick={() => navigate('/careers')}
               className="flex items-center justify-center gap-2 px-8 py-4 bg-white/10 text-white font-bold text-lg rounded-2xl border border-white/20 hover:bg-white/20 transition-all backdrop-blur">
-              <Briefcase className="w-5 h-5" /> Explore Careers
+              <Briefcase className="w-5 h-5" /> Browse careers
             </button>
           </div>
 
-          {/* Stats row */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-4">
             {stats.map(s => (
               <div key={s.label} className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-5">
-                <p className="text-3xl font-black text-white">{s.value}</p>
-                <p className="text-sm text-white/60 mt-1">{s.label}</p>
+                <p className="text-2xl font-black text-white">{s.value}</p>
+                <p className="text-sm text-white/50 mt-1">{s.label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
+      {/* Features — conversational */}
       <section className="py-24 px-6 bg-gray-50">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">Everything You Need</h2>
-            <p className="text-xl text-gray-500 max-w-xl mx-auto">Three powerful AI tools to guide your career journey from start to finish.</p>
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-black text-gray-900 mb-4">We\'ve got you covered.</h2>
+            <p className="text-lg text-gray-400">Wherever you are in your career journey, start here.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {features.map(f => (
               <button key={f.title} onClick={() => navigate(f.link)}
-                className="group text-left bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:-translate-y-2">
-                <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${f.color} text-white mb-6 shadow-lg`}>{f.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{f.title}</h3>
-                <p className="text-gray-500 leading-relaxed">{f.desc}</p>
-                <div className="mt-6 flex items-center text-blue-600 font-semibold text-sm group-hover:gap-2 gap-1 transition-all">
-                  Get Started <ArrowRight className="w-4 h-4" />
-                </div>
+                className="group text-left bg-white rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:-translate-y-1">
+                <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${f.color} text-white mb-5 shadow`}>{f.icon}</div>
+                <h3 className="text-lg font-bold text-gray-900 mb-3">{f.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
+                <p className="mt-5 text-blue-600 font-semibold text-sm group-hover:underline">{f.cta}</p>
               </button>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How it Works */}
+      {/* How it Works — honest, casual */}
       <section className="py-24 px-6 bg-gradient-to-br from-blue-950 to-purple-950">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black text-white mb-4">How It Works</h2>
-            <p className="text-xl text-white/60">From blank page to clear career direction in just 3 steps.</p>
+          <div className="text-center mb-14">
+            <h2 className="text-4xl font-black text-white mb-4">It\'s simpler than you think.</h2>
+            <p className="text-lg text-white/50">Three steps. No account required. No fluff.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-6">
             {steps.map((s, i) => (
-              <div key={s.num} className="relative">
-                {i < steps.length - 1 && <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-purple-500 to-transparent z-0" />}
-                <div className="relative z-10 bg-white/10 backdrop-blur border border-white/20 rounded-3xl p-8">
-                  <div className="text-6xl font-black text-white/10 mb-4">{s.num}</div>
-                  <h3 className="text-xl font-bold text-white mb-3">{s.title}</h3>
-                  <p className="text-white/60 leading-relaxed">{s.desc}</p>
-                </div>
+              <div key={s.num} className="bg-white/10 backdrop-blur border border-white/20 rounded-3xl p-8">
+                <div className="text-5xl font-black text-white/10 mb-4">{s.num}</div>
+                <h3 className="text-lg font-bold text-white mb-3">{s.title}</h3>
+                <p className="text-white/50 text-sm leading-relaxed">{s.desc}</p>
               </div>
             ))}
           </div>
           <div className="text-center mt-12">
             <button onClick={() => { resetTest(); navigate('/test'); }}
-              className="inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-xl rounded-2xl hover:from-purple-500 hover:to-blue-500 transition-all shadow-2xl hover:scale-105">
-              <Target className="w-6 h-6" /> Start My Career Journey
+              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 font-bold text-lg rounded-2xl hover:bg-gray-100 transition-all shadow-2xl">
+              <Target className="w-5 h-5 text-purple-600" /> OK, let\'s find my career
             </button>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white/50 py-10 text-center text-sm">
-        <p className="font-semibold text-white/80 mb-1">CareerAI</p>
-        <p>Built with React, Flask &amp; Google Gemini • Open Source</p>
+      <footer className="bg-gray-900 text-white/40 py-10 text-center text-sm">
+        <p className="font-semibold text-white/70 mb-1">CareerAI</p>
+        <p>Built with React &amp; Google Gemini · Free forever · No ads</p>
       </footer>
     </div>
   );
@@ -872,6 +883,7 @@ const AdminPanel = ({ adminToken, setAdminToken, currentPage, adminStats, setAdm
 
 const CareerCounselingSystem = () => {
   const [user] = useState(null); // Google OAuth user profile (set after login)
+  const location = useLocation();
   const [testResults, setTestResults] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -1115,18 +1127,21 @@ const CareerCounselingSystem = () => {
           <h1 className="text-xl font-bold text-gray-800">CareerAI</h1>
           <div className="w-6"></div>
         </div>
-        <div className="bg-white border-b px-6 py-3 flex justify-end items-center shadow-sm sticky top-0 z-40">
-          <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-            <MapPin className="w-4 h-4 text-indigo-500" />
-            <span className="text-sm text-gray-600 font-medium">Region:</span>
-            <select value={userLocation} onChange={(e) => setUserLocation(e.target.value)}
-              className="text-sm font-semibold text-indigo-700 bg-transparent outline-none cursor-pointer">
-              <option value="USA">United States</option>
-              <option value="India">India</option>
-              <option value="UK">United Kingdom</option>
-            </select>
+        {/* Hide the white region header bar on the homepage */}
+        {location.pathname !== '/' && (
+          <div className="bg-white border-b px-6 py-3 flex justify-end items-center shadow-sm sticky top-0 z-40">
+            <div className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+              <MapPin className="w-4 h-4 text-indigo-500" />
+              <span className="text-sm text-gray-600 font-medium">Region:</span>
+              <select value={userLocation} onChange={(e) => setUserLocation(e.target.value)}
+                className="text-sm font-semibold text-indigo-700 bg-transparent outline-none cursor-pointer">
+                <option value="USA">United States</option>
+                <option value="India">India</option>
+                <option value="UK">United Kingdom</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         <Routes>
           <Route path="/" element={<Homepage resetTest={resetTest} />} />

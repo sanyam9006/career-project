@@ -8,7 +8,7 @@ Original file is located at
 """
 
 # app.py
-from flask import Flask, request, jsonify, Response, stream_with_context
+from flask import Flask, request, jsonify, Response, stream_with_context, redirect, session
 from flask_cors import CORS
 from agarwalwork import DatabaseManager, AptitudeTestManager
 from sanyamwork import PersonalityAnalyzer, get_gemini_client
@@ -18,13 +18,91 @@ import os
 import requests as http_requests
 from dotenv import load_dotenv
 from google.genai import types
+import urllib.parse
 
 load_dotenv()
 
 # --- INITIALIZATION ---
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "careerail-secret-key-change-in-prod")
 # CORS allows the React frontend to communicate with this backend
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "470589248896-oddvm5aq6559mo6qv3476n9laj0ar6tr.apps.googleusercontent.com")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "https://career-project-ph1x.onrender.com/auth/google/callback")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://career-project-roan.vercel.app")
+
+# --- GOOGLE OAUTH ROUTES ---
+@app.route('/auth/google')
+def auth_google():
+    """Redirect the user to Google's OAuth 2.0 login page."""
+    params = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+    }
+    google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+    return redirect(google_auth_url)
+
+@app.route('/auth/google/callback')
+def auth_google_callback():
+    """Handle the Google OAuth callback, get user info, and redirect to frontend."""
+    code = request.args.get("code")
+    if not code:
+        return redirect(f"{FRONTEND_URL}?auth=error")
+
+    # Exchange code for tokens
+    token_response = http_requests.post("https://oauth2.googleapis.com/token", data={
+        "code": code,
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "grant_type": "authorization_code",
+    })
+    token_data = token_response.json()
+    access_token = token_data.get("access_token")
+    if not access_token:
+        return redirect(f"{FRONTEND_URL}?auth=error")
+
+    # Get user info from Google
+    user_info = http_requests.get(
+        "https://www.googleapis.com/oauth2/v1/userinfo",
+        headers={"Authorization": f"Bearer {access_token}"}
+    ).json()
+
+    session["user"] = {
+        "id": user_info.get("id"),
+        "name": user_info.get("name"),
+        "email": user_info.get("email"),
+        "picture": user_info.get("picture"),
+    }
+
+    # Pass user info to frontend via URL query params (since we're redirecting)
+    params = urllib.parse.urlencode({
+        "auth": "success",
+        "name": user_info.get("name", ""),
+        "email": user_info.get("email", ""),
+        "picture": user_info.get("picture", ""),
+    })
+    return redirect(f"{FRONTEND_URL}?{params}")
+
+@app.route('/auth/me')
+def auth_me():
+    """Return the logged-in user from session."""
+    user = session.get("user")
+    if user:
+        return jsonify(user)
+    return jsonify({"error": "Not logged in"}), 401
+
+@app.route('/auth/logout')
+def auth_logout():
+    """Clear session and redirect to frontend."""
+    session.pop("user", None)
+    return redirect(FRONTEND_URL)
+
 
 # Initialize your backend modules
 db_manager = DatabaseManager('career_counseling.db')
