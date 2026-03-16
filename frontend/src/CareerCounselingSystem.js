@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, Routes, Route } from "react-router-dom";
-import { User, Brain, BookOpen, TrendingUp, Award, ChevronRight, Home, TestTube, Users, Menu, X, Shield, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, Scale, Sparkles, Zap, Target, ArrowRight, Star, ExternalLink, Activity } from "lucide-react";
+import { User, Brain, TrendingUp, Home, TestTube, Users, Menu, X, Shield, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, Scale, Sparkles, Zap, Target, ArrowRight, ExternalLink, Activity } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL ||
   (window.location.hostname === 'localhost'
@@ -871,7 +871,7 @@ const AdminPanel = ({ adminToken, setAdminToken, currentPage, adminStats, setAdm
 };
 
 const CareerCounselingSystem = () => {
-  const [user, setUser] = useState(null); // Google OAuth user profile
+  const [user] = useState(null); // Google OAuth user profile (set after login)
   const [testResults, setTestResults] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
