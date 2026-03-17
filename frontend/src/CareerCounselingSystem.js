@@ -1107,7 +1107,7 @@ const CareerCounselingSystem = () => {
               setAdminStats={setAdminStats} adminUsers={adminUsers} setAdminUsers={setAdminUsers}
               adminLogs={adminLogs} setAdminLogs={setAdminLogs} />
           } />
-          <Route path="*" element={<Homepage resetTest={resetTest} />} />
+          <Route path="*" element={<Dashboard resetTest={resetTest} userLocation={userLocation} setUserLocation={setUserLocation} />} />
         </Routes>
       </div>
 
