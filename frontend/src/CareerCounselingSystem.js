@@ -671,7 +671,7 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation, compareList, 
 
 const NlpEssayScreen = ({ essayText, setEssayText, isAnalyzing, setIsAnalyzing, nlpResults, setNlpResults }) => {
   const [mbtiResult, setMbtiResult] = useState(null);
-  const [_error, setError] = useState(null);
+  const [, setError] = useState(null);
 
   const submitEssay = async () => {
     if (!essayText.trim()) return;
@@ -1050,7 +1050,6 @@ const AdminPanel = ({ adminToken, setAdminToken, currentPage, adminStats, setAdm
 
 const CareerCounselingSystem = () => {
   const [user] = useState(null); // Google OAuth user profile (set after login)
-  const _location = useLocation();
   const [testResults, setTestResults] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
