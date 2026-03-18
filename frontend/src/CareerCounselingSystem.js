@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, Routes, Route, useLocation } from "react-router-dom";
-import { User, Brain, TrendingUp, Home, TestTube, Users, Menu, X, Shield, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, Scale, Sparkles, Zap, Target, ArrowRight, ExternalLink, Activity, Plus } from "lucide-react";
+import { Brain, TrendingUp, Home, TestTube, Users, Menu, X, Shield, Edit3, MapPin, MessageSquare, Send, Briefcase, Loader, Scale, Sparkles, Zap, Target, ArrowRight, ExternalLink, Activity, Plus } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL ||
   (window.location.hostname === 'localhost'
@@ -671,7 +671,7 @@ const CareerExplorer = ({ isLoading, careerDatabase, userLocation, compareList, 
 
 const NlpEssayScreen = ({ essayText, setEssayText, isAnalyzing, setIsAnalyzing, nlpResults, setNlpResults }) => {
   const [mbtiResult, setMbtiResult] = useState(null);
-  const [error, setError] = useState(null);
+  const [_error, setError] = useState(null);
 
   const submitEssay = async () => {
     if (!essayText.trim()) return;
@@ -934,7 +934,7 @@ const AdminPanel = ({ adminToken, setAdminToken, currentPage, adminStats, setAdm
 
   const fetchAdminData = async () => {
     try {
-      const [statsRes, usersRes, logsRes] = await Promise.all([
+      const [, , logsRes] = await Promise.all([
         fetch(`${API_URL}/admin/dashboard-stats`),
         fetch(`${API_URL}/admin/users`),
         fetch(`${API_URL}/admin/logs?limit=10`)
@@ -1050,7 +1050,7 @@ const AdminPanel = ({ adminToken, setAdminToken, currentPage, adminStats, setAdm
 
 const CareerCounselingSystem = () => {
   const [user] = useState(null); // Google OAuth user profile (set after login)
-  const location = useLocation();
+  const _location = useLocation();
   const [testResults, setTestResults] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
