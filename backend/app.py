@@ -31,7 +31,7 @@ CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "470589248896-oddvm5aq6559mo6qv3476n9laj0ar6tr.apps.googleusercontent.com")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "https://career-project-ph1x.onrender.com/auth/google/callback")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://career-project-roan.vercel.app")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://career-project-mu.vercel.app")
 
 # --- GOOGLE OAUTH ROUTES ---
 @app.route('/auth/google')
