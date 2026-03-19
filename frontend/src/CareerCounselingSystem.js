@@ -61,7 +61,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, resetTest, user }) => (
       <NavLink to="/admin" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
         <Shield className="w-5 h-5 mr-3" /> Admin Panel
       </NavLink>
-      <button onClick={() => { window.location.href = user ? `${API_URL}/auth/logout` : `${API_URL}/auth/google`; }}
+      <button onClick={() => { if (user) handleLogout(); else window.location.href = `${API_URL}/auth/google`; }}
         className="mt-4 w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all shadow-xl active:scale-[0.98]">
         {user ? (
           <><X className="w-4 h-4" /> Logout</>
@@ -1049,7 +1049,10 @@ const AdminPanel = ({ adminToken, setAdminToken, currentPage, adminStats, setAdm
 };
 
 const CareerCounselingSystem = () => {
-  const [user] = useState(null); // Google OAuth user profile (set after login)
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  }); // Google OAuth user profile (set after login)
   const [testResults, setTestResults] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -1283,6 +1286,31 @@ const CareerCounselingSystem = () => {
     setUserEducation('');
   };
 
+  // --- GOOGLE OAUTH CALLBACK HANDLER ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth') === 'success') {
+      const newUser = {
+        name: params.get('name'),
+        email: params.get('email'),
+        picture: params.get('picture'),
+      };
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      
+      // Clean the URL (remove query params)
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, []);
+
+  // --- LOGOUT HANDLER ---
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    window.location.href = `${API_URL}/auth/logout`;
+  };
+
 
   const locationInstance = useLocation();
   const isHome = locationInstance.pathname === '/';
@@ -1326,32 +1354,40 @@ const CareerCounselingSystem = () => {
 
         <Routes>
           <Route path="/" element={<Dashboard resetTest={resetTest} userLocation={userLocation} setUserLocation={setUserLocation} />} />
-          <Route path="/test" element={
+          
+          {/* Protected Routes */}
+          <Route path="/test" element={user ? (
             <AptitudeTest isLoading={isLoading} aptitudeQuestions={aptitudeQuestions} showResults={showResults}
               testResults={testResults} currentQuestion={currentQuestion} handleAnswer={handleAnswer}
               answers={answers} handleNextQuestion={handleNextQuestion} handleFinishTest={handleFinishTest}
               resetTest={resetTest} userAge={userAge} setUserAge={setUserAge} userEducation={userEducation}
               setUserEducation={setUserEducation} userProfileSet={userProfileSet} setUserProfileSet={setUserProfileSet} />
-          } />
-          <Route path="/essay" element={
+          ) : <Dashboard resetTest={resetTest} userLocation={userLocation} setUserLocation={setUserLocation} />} />
+
+          <Route path="/essay" element={user ? (
             <NlpEssayScreen essayText={essayText} setEssayText={setEssayText} isAnalyzing={isAnalyzing}
               setIsAnalyzing={setIsAnalyzing} nlpResults={nlpResults} setNlpResults={setNlpResults} />
-          } />
-          <Route path="/careers" element={
+          ) : <Dashboard resetTest={resetTest} userLocation={userLocation} setUserLocation={setUserLocation} />} />
+
+          <Route path="/careers" element={user ? (
             <CareerExplorer isLoading={isLoading} careerDatabase={careerDatabase} userLocation={userLocation}
               compareList={compareList} setCompareList={setCompareList} />
-          } />
-          <Route path="/compare" element={
+          ) : <Dashboard resetTest={resetTest} userLocation={userLocation} setUserLocation={setUserLocation} />} />
+
+          <Route path="/compare" element={user ? (
             <CareerComparePage compareList={compareList} setCompareList={setCompareList} careerDatabase={careerDatabase} />
-          } />
-          <Route path="/roadmap" element={
+          ) : <Dashboard resetTest={resetTest} userLocation={userLocation} setUserLocation={setUserLocation} />} />
+
+          <Route path="/roadmap" element={user ? (
             <RoadmapPage userAge={userAge} userLocation={userLocation} userEducation={userEducation} />
-          } />
+          ) : <Dashboard resetTest={resetTest} userLocation={userLocation} setUserLocation={setUserLocation} />} />
+
           <Route path="/admin" element={
             <AdminPanel adminToken={adminToken} setAdminToken={setAdminToken} adminStats={adminStats}
               setAdminStats={setAdminStats} adminUsers={adminUsers} setAdminUsers={setAdminUsers}
               adminLogs={adminLogs} setAdminLogs={setAdminLogs} />
           } />
+          
           <Route path="*" element={<Dashboard resetTest={resetTest} userLocation={userLocation} setUserLocation={setUserLocation} />} />
         </Routes>
       </div>
