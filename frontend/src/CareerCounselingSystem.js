@@ -14,7 +14,7 @@ const navLinkClass = ({ isActive }) =>
       : 'text-slate-400 hover:bg-white/5 hover:text-white font-medium'
   }`;
 
-const Sidebar = ({ sidebarOpen, setSidebarOpen, resetTest, user }) => (
+const Sidebar = ({ sidebarOpen, setSidebarOpen, resetTest, user, handleLogout }) => (
   <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0f172a] transform transition-transform duration-500 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col shadow-2xl overflow-hidden`}>
     <div className="flex items-center justify-between h-20 px-6 mt-2">
       <div className="flex items-center gap-3">
@@ -1317,7 +1317,7 @@ const CareerCounselingSystem = () => {
 
   return (
     <div className={`flex min-h-screen transition-colors duration-500 overflow-x-hidden ${isHome ? 'bg-white text-slate-900' : 'bg-[#f8fafc] text-slate-900'}`}>
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} resetTest={resetTest} user={user} />
+      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} resetTest={resetTest} user={user} handleLogout={handleLogout} />
       <div className="flex-1 lg:pl-64 w-full">
         {!isHome && (
           <div className="flex items-center justify-between h-20 px-8 bg-white border-b border-slate-200">
