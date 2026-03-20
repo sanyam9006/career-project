@@ -37,12 +37,16 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://career-project-mu.vercel.
 @app.route('/auth/google')
 def auth_google():
     """Redirect the user to Google's OAuth 2.0 login page."""
+    # Capture the originating frontend URL
+    redirect_uri = request.args.get('redirect_uri', FRONTEND_URL)
+    
     params = {
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": GOOGLE_REDIRECT_URI,
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
+        "state": redirect_uri,  # Pass the frontend URL through
     }
     google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
     return redirect(google_auth_url)
@@ -51,8 +55,13 @@ def auth_google():
 def auth_google_callback():
     """Handle the Google OAuth callback, get user info, and redirect to frontend."""
     code = request.args.get("code")
+    state = request.args.get("state", FRONTEND_URL) # The originating frontend URL
+    
+    # Simple validation to ensure we only redirect to trustworthy domains
+    target_url = state if any(domain in state for domain in ['localhost', 'vercel.app', '127.0.0.1']) else FRONTEND_URL
+    
     if not code:
-        return redirect(f"{FRONTEND_URL}?auth=error")
+        return redirect(f"{target_url}?auth=error")
 
     # Exchange code for tokens
     token_response = http_requests.post("https://oauth2.googleapis.com/token", data={
@@ -65,7 +74,7 @@ def auth_google_callback():
     token_data = token_response.json()
     access_token = token_data.get("access_token")
     if not access_token:
-        return redirect(f"{FRONTEND_URL}?auth=error")
+        return redirect(f"{target_url}?auth=error")
 
     # Get user info from Google
     user_info = http_requests.get(
@@ -87,7 +96,73 @@ def auth_google_callback():
         "email": user_info.get("email", ""),
         "picture": user_info.get("picture", ""),
     })
-    return redirect(f"{FRONTEND_URL}?{params}")
+    return redirect(f"{target_url}?{params}")
+    
+# --- TRADITIONAL AUTH ROUTES ---
+@app.route('/auth/register', methods=['POST'])
+def auth_register():
+    """Handle traditional email/password registration."""
+    try:
+        data = request.json
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        full_name = data.get('full_name', '')
+        age = data.get('age')
+        education = data.get('education_level', '')
+
+        if not all([username, email, password]):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_id = db_manager.add_user(
+            username=username,
+            email=email,
+            password=password,
+            full_name=full_name,
+            age=age,
+            education_level=education
+        )
+
+        if user_id:
+            # Automatically log them in
+            user_data = {
+                "id": user_id,
+                "name": full_name or username,
+                "email": email,
+                "picture": f"https://ui-avatars.com/api/?name={urllib.parse.quote(full_name or username)}&background=random"
+            }
+            session["user"] = user_data
+            return jsonify({"status": "success", "user": user_data}), 201
+        
+        return jsonify({"error": "Registration failed. Username or email might already exist."}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/auth/login', methods=['POST'])
+def auth_login():
+    """Handle traditional username/password login."""
+    try:
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+
+        if not all([username, password]):
+            return jsonify({"error": "Missing username or password"}), 400
+
+        user = db_manager.authenticate_user(username, password)
+        if user:
+            user_data = {
+                "id": user['user_id'],
+                "name": user['full_name'] or user['username'],
+                "email": user['email'],
+                "picture": f"https://ui-avatars.com/api/?name={urllib.parse.quote(user['full_name'] or user['username'])}&background=random"
+            }
+            session["user"] = user_data
+            return jsonify({"status": "success", "user": user_data})
+        
+        return jsonify({"error": "Invalid username or password"}), 401
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/auth/me')
 def auth_me():
