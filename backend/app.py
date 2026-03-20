@@ -37,16 +37,20 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://career-project-mu.vercel.
 @app.route('/auth/google')
 def auth_google():
     """Redirect the user to Google's OAuth 2.0 login page."""
-    # Capture the originating frontend URL
-    redirect_uri = request.args.get('redirect_uri', FRONTEND_URL)
+    # Capture the originating frontend URL (e.g. http://localhost:3000)
+    # The user's frontend sends this as a query param
+    requested_redirect = request.args.get('redirect_uri', FRONTEND_URL)
+    session['oauth_frontend_url'] = requested_redirect
     
+    # We always use the SAME callback URL registered in Google Console
+    # Google will redirect back to OUR backend, and then we redirect to the frontend
     params = {
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": GOOGLE_REDIRECT_URI,
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
-        "state": redirect_uri,  # Pass the frontend URL through
+        "state": requested_redirect,  # Keep as state for extra safety
     }
     google_auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
     return redirect(google_auth_url)
@@ -55,48 +59,62 @@ def auth_google():
 def auth_google_callback():
     """Handle the Google OAuth callback, get user info, and redirect to frontend."""
     code = request.args.get("code")
-    state = request.args.get("state", FRONTEND_URL) # The originating frontend URL
+    # Priority for target: 1. State from Google, 2. Session, 3. Default Frontend
+    state = request.args.get("state")
+    target_url = state or session.get('oauth_frontend_url', FRONTEND_URL)
     
     # Simple validation to ensure we only redirect to trustworthy domains
-    target_url = state if any(domain in state for domain in ['localhost', 'vercel.app', '127.0.0.1']) else FRONTEND_URL
+    if not any(domain in target_url for domain in ['localhost', 'vercel.app', '127.0.0.1']):
+        target_url = FRONTEND_URL
     
     if not code:
         return redirect(f"{target_url}?auth=error")
 
-    # Exchange code for tokens
-    token_response = http_requests.post("https://oauth2.googleapis.com/token", data={
-        "code": code,
-        "client_id": GOOGLE_CLIENT_ID,
-        "client_secret": GOOGLE_CLIENT_SECRET,
-        "redirect_uri": GOOGLE_REDIRECT_URI,
-        "grant_type": "authorization_code",
-    })
-    token_data = token_response.json()
-    access_token = token_data.get("access_token")
-    if not access_token:
+    try:
+        # Exchange code for tokens
+        token_response = http_requests.post("https://oauth2.googleapis.com/token", data={
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "grant_type": "authorization_code",
+        })
+        token_data = token_response.json()
+        access_token = token_data.get("access_token")
+        if not access_token:
+            print(f"Token exchange failed: {token_data}")
+            return redirect(f"{target_url}?auth=error")
+
+        # Get user info from Google
+        user_info = http_requests.get(
+            "https://www.googleapis.com/oauth2/v1/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"}
+        ).json()
+
+        user_email = user_info.get("email")
+        user_name = user_info.get("name")
+
+        # Log Google Auth success in our internal activity log
+        db_manager.log_activity(None, 'GOOGLE_LOGIN', f'User {user_name} ({user_email}) logged in via Google')
+
+        session["user"] = {
+            "id": user_info.get("id"),
+            "name": user_name,
+            "email": user_email,
+            "picture": user_info.get("picture"),
+        }
+
+        # Pass user info to frontend via URL query params
+        params = urllib.parse.urlencode({
+            "auth": "success",
+            "name": user_name or "",
+            "email": user_email or "",
+            "picture": user_info.get("picture", ""),
+        })
+        return redirect(f"{target_url}?{params}")
+    except Exception as e:
+        db_manager.log_error(str(e), endpoint='/auth/google/callback')
         return redirect(f"{target_url}?auth=error")
-
-    # Get user info from Google
-    user_info = http_requests.get(
-        "https://www.googleapis.com/oauth2/v1/userinfo",
-        headers={"Authorization": f"Bearer {access_token}"}
-    ).json()
-
-    session["user"] = {
-        "id": user_info.get("id"),
-        "name": user_info.get("name"),
-        "email": user_info.get("email"),
-        "picture": user_info.get("picture"),
-    }
-
-    # Pass user info to frontend via URL query params (since we're redirecting)
-    params = urllib.parse.urlencode({
-        "auth": "success",
-        "name": user_info.get("name", ""),
-        "email": user_info.get("email", ""),
-        "picture": user_info.get("picture", ""),
-    })
-    return redirect(f"{target_url}?{params}")
     
 # --- TRADITIONAL AUTH ROUTES ---
 @app.route('/auth/register', methods=['POST'])
@@ -175,6 +193,9 @@ def auth_me():
 @app.route('/auth/logout')
 def auth_logout():
     """Clear session and redirect to frontend."""
+    user = session.get("user")
+    if user:
+        db_manager.log_activity(user.get('id'), 'USER_LOGOUT', f"User {user.get('name')} logged out")
     session.pop("user", None)
     return redirect(FRONTEND_URL)
 
@@ -557,45 +578,74 @@ def get_next_adaptive_question():
     """Returns the next best question based on current session performance."""
     try:
         data = request.json
-        session_score = data.get('session_score', 50)   # 0-100
         answered_ids = data.get('answered_ids', [])
+        # history is a list of {'correct': bool, 'difficulty': str}
+        history = data.get('history', []) 
+        education = data.get('education', 'School').lower()
+        
+        # Stop after 20 questions
+        if len(answered_ids) >= 20:
+            return jsonify({"done": True})
 
-        # Adaptive difficulty logic
-        if session_score >= 70:
-            difficulty = 'hard'
-        elif session_score >= 40:
-            difficulty = 'medium'
+        # 1. Determine Difficulty
+        if not answered_ids:
+            # Initial difficulty based on education
+            if any(key in education for key in ['graduate', 'degree', 'post', 'phd', 'masters']):
+                difficulty = 'hard'
+            elif any(key in education for key in ['college', 'university', 'diploma', 'high']):
+                difficulty = 'medium'
+            else:
+                difficulty = 'easy'
         else:
-            difficulty = 'easy'
+            # Adaptive logic based on recent history
+            # We look at the last 5 questions or all if less than 5
+            recent_history = history[-5:] if len(history) >= 5 else history
+            correct_count = sum(1 for h in recent_history if h.get('correct'))
+            current_diff = history[-1].get('difficulty', 'medium')
+            
+            # Step up if doing great (80%+ correct)
+            if correct_count >= 4:
+                difficulty = 'hard' if current_diff == 'medium' else ('medium' if current_diff == 'easy' else 'hard')
+            # Step down if struggling (20% or less correct)
+            elif correct_count <= 1 and len(recent_history) >= 3:
+                difficulty = 'easy' if current_diff == 'medium' else ('medium' if current_diff == 'hard' else 'easy')
+            else:
+                difficulty = current_diff
 
+        # 2. Select Category (Cycle through categories to keep it balanced)
         aptitude_cats = ['logical_reasoning', 'numerical_ability', 'verbal_ability', 'spatial_reasoning', 'abstract_reasoning']
+        cat_index = len(answered_ids) % len(aptitude_cats)
+        target_cat = aptitude_cats[cat_index]
 
-        # Exclude already answered questions and interest questions
+        # 3. Query Database
+        placeholders = ','.join('?' * len(answered_ids)) if answered_ids else '0'
+        # We try to find a question in the TARGET category with the TARGET difficulty
+        query = f'''
+            SELECT question_id, category, difficulty, question_text, options, correct_answer, explanation
+            FROM questions
+            WHERE category = ? AND difficulty = ?
+            AND question_id NOT IN ({placeholders if answered_ids else '0'})
+            ORDER BY RANDOM() LIMIT 1
+        '''
+        params = [target_cat, difficulty]
         if answered_ids:
-            placeholders = ','.join('?' * len(answered_ids))
-            query = f'''
-                SELECT question_id, category, difficulty, question_text, options, correct_answer, explanation
-                FROM questions
-                WHERE difficulty = ? AND category IN ({",".join("?" * len(aptitude_cats))})
-                AND question_id NOT IN ({placeholders})
-                ORDER BY RANDOM() LIMIT 1
-            '''
-            db_manager.cursor.execute(query, [difficulty] + aptitude_cats + answered_ids)
-        else:
-            query = f'''
-                SELECT question_id, category, difficulty, question_text, options, correct_answer, explanation
-                FROM questions
-                WHERE difficulty = ? AND category IN ({",".join("?" * len(aptitude_cats))})
-                ORDER BY RANDOM() LIMIT 1
-            '''
-            db_manager.cursor.execute(query, [difficulty] + aptitude_cats)
-
+            params.extend(answered_ids)
+            
+        db_manager.cursor.execute(query, params)
         row = db_manager.cursor.fetchone()
+
+        # Fallback if no question in that specific difficulty exists for the category
         if not row:
-            # Fallback to any unanswered question
-            db_manager.cursor.execute(
-                "SELECT question_id, category, difficulty, question_text, options, correct_answer, explanation FROM questions WHERE category != 'interest' ORDER BY RANDOM() LIMIT 1"
-            )
+            query = f'''
+                SELECT question_id, category, difficulty, question_text, options, correct_answer, explanation
+                FROM questions
+                WHERE category = ? AND question_id NOT IN ({placeholders if answered_ids else '0'})
+                ORDER BY RANDOM() LIMIT 1
+            '''
+            params = [target_cat]
+            if answered_ids:
+                params.extend(answered_ids)
+            db_manager.cursor.execute(query, params)
             row = db_manager.cursor.fetchone()
 
         if not row:
@@ -604,18 +654,16 @@ def get_next_adaptive_question():
         q = {
             'question_id': row[0], 'category': row[1], 'difficulty': row[2],
             'question': row[3], 'options': json.loads(row[4]),
-            'correct_answer': row[5], 'explanation': row[6],
-            'selected_difficulty': difficulty
+            'correct_answer': row[5], 'explanation': row[6]
         }
-        # Don't expose answer to client
-        answer = q.pop('correct_answer')
-        explanation = q.pop('explanation')
-        q['_answer'] = answer  # Will be removed before sending
-        del q['_answer']
+        
+        # Don't expose the answer directly in the main response field
+        # but keep it if the frontend needs it for immediate feedback or calculations
+        return jsonify(q)
 
-        return jsonify({**q, 'target_difficulty': difficulty})
     except Exception as e:
-        print(f"Adaptive question error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
