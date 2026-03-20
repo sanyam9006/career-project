@@ -1435,7 +1435,7 @@ const CareerCounselingSystem = () => {
     if (userProfileSet && aptitudeQuestions.length === 0) {
       fetchNextQuestion([], []);
     }
-  }, [userProfileSet]);
+  }, [userProfileSet, aptitudeQuestions.length, fetchNextQuestion]);
 
   const handleAnswer = (optionIndex) => {
     setAnswers({
@@ -1553,7 +1553,7 @@ const CareerCounselingSystem = () => {
         alert("Authentication failed. Please try again or use email login.");
       }
     }
-  }, []);
+  }, [handleAuthSuccess]);
 
   // --- LOGOUT HANDLER ---
   const handleLogout = () => {
