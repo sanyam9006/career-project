@@ -181,7 +181,10 @@ class DatabaseManager:
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (username, email, password_hash, full_name, age, education_level))
             self.conn.commit()
-            return self.cursor.lastrowid
+            user_id = self.cursor.lastrowid
+            if user_id:
+                self.log_activity(user_id, 'USER_REGISTER', f'New user {username} joined via email')
+            return user_id
         except sqlite3.IntegrityError as e:
             print(f"Error adding user: {e}")
             return None
