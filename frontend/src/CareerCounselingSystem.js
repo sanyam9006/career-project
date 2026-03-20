@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, Routes, Route, useLocation } from "react-router-dom";
-import { Brain, TrendingUp, Home, TestTube, Users, Menu, X, Shield, Edit3, MapPin, MessageSquare, Send, Briefcase, Mail, Loader, Scale, Sparkles, Zap, Target, ArrowRight, ExternalLink, Activity, Plus } from "lucide-react";
+import { Brain, TrendingUp, Home, TestTube, Users, Menu, X, Shield, Edit3, MapPin, MessageSquare, Send, Briefcase, Mail, Loader, Scale, Sparkles, Zap, Target, ArrowRight, ExternalLink, Activity, Plus, AlertCircle } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_API_URL ||
   (window.location.hostname === 'localhost'
-    ? 'http://127.0.0.1:5000'
+    ? 'http://localhost:5000'
     : 'https://career-project-ph1x.onrender.com');
 
 const navLinkClass = ({ isActive }) =>
@@ -427,9 +427,15 @@ const RoadmapPage = ({ userAge, userLocation, userEducation }) => {
   );
 };
 
-const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, currentQuestion, handleAnswer, answers, handleNextQuestion, handleFinishTest, resetTest, userAge, setUserAge, userEducation, setUserEducation, userProfileSet, setUserProfileSet }) => {
-  if (isLoading) return <div className="p-6 text-center">Loading Test...</div>;
-  if (!aptitudeQuestions || aptitudeQuestions.length === 0) return <div className="p-6 text-center text-red-500">Failed to load test questions. Please ensure the backend server is running.</div>;
+const AptitudeTest = ({ isLoading, isTestLoading, aptitudeQuestions, showResults, testResults, currentQuestion, handleAnswer, answers, handleNextQuestion, handleFinishTest, resetTest, userAge, setUserAge, userEducation, setUserEducation, userProfileSet, setUserProfileSet }) => {
+  const question = aptitudeQuestions[currentQuestion];
+  
+  if (isLoading) return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh]">
+      <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <p className="mt-4 text-slate-500 font-bold">Initializing System...</p>
+    </div>
+  );
 
   // Step 1: Collect user profile before showing test
   if (!userProfileSet) {
@@ -528,7 +534,28 @@ const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, 
     );
   }
 
-  const question = aptitudeQuestions[currentQuestion];
+  if (isTestLoading) {
+    return (
+      <div className="p-8 lg:p-12 max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+        <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">Preparing your next question...</p>
+      </div>
+    );
+  }
+
+  if (!question) {
+    return (
+      <div className="p-8 lg:p-12 max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="bg-red-50 p-6 rounded-3xl mb-6">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-slate-900 mb-2">Test Sync Error</h3>
+          <p className="text-slate-500 max-w-sm">We couldn't fetch the next set of questions. Please check your internet connection or try restarting the test.</p>
+        </div>
+        <button onClick={resetTest} className="px-8 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Restart Test</button>
+      </div>
+    );
+  }
+
   const isInterestQuestion = question?.category === 'interest';
   return (
     <div className="p-8 lg:p-12 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -542,13 +569,13 @@ const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, 
           </div>
           <div className="text-right">
             <span className="text-3xl font-black text-indigo-600 tabular-nums">{currentQuestion + 1}</span>
-            <span className="text-slate-400 font-bold ml-1">/ {aptitudeQuestions.length}</span>
+            <span className="text-slate-400 font-bold ml-1">/ 20</span>
           </div>
         </div>
         <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner">
           <div 
             className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 shadow-[0_0_10px_rgba(79,70,229,0.3)] transition-all duration-700 ease-out"
-            style={{ width: `${((currentQuestion + 1) / aptitudeQuestions.length) * 100}%` }}
+            style={{ width: `${((currentQuestion + 1) / 20) * 100}%` }}
           />
         </div>
       </div>
@@ -562,18 +589,18 @@ const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, 
           {question.options.map((option, index) => (
             <button
               key={index}
-              onClick={() => handleAnswer(currentQuestion, option)}
+              onClick={() => handleAnswer(index)}
               className={`w-full text-left p-6 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between group ${
-                answers[currentQuestion] === option 
+                answers[currentQuestion] === index 
                   ? 'border-indigo-600 bg-indigo-50/50 shadow-lg shadow-indigo-500/5' 
                   : 'border-slate-100 hover:border-indigo-200 hover:bg-slate-50'
               }`}
             >
-              <span className={`text-lg font-bold ${answers[currentQuestion] === option ? 'text-indigo-700' : 'text-slate-600 group-hover:text-slate-900'}`}>{option}</span>
+              <span className={`text-lg font-bold ${answers[currentQuestion] === index ? 'text-indigo-700' : 'text-slate-600 group-hover:text-slate-900'}`}>{option}</span>
               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                answers[currentQuestion] === option ? 'border-indigo-600 bg-indigo-600' : 'border-slate-200 group-hover:border-indigo-300'
+                answers[currentQuestion] === index ? 'border-indigo-600 bg-indigo-600' : 'border-slate-200 group-hover:border-indigo-300'
               }`}>
-                {answers[currentQuestion] === option && <div className="w-2.5 h-2.5 bg-white rounded-full shadow-sm" />}
+                {answers[currentQuestion] === index && <div className="w-2.5 h-2.5 bg-white rounded-full shadow-sm" />}
               </div>
             </button>
           ))}
@@ -581,11 +608,11 @@ const AptitudeTest = ({ isLoading, aptitudeQuestions, showResults, testResults, 
         
         <div className="mt-12 flex justify-end">
           <button 
-            disabled={!answers[currentQuestion]}
-            onClick={currentQuestion === aptitudeQuestions.length - 1 ? handleFinishTest : handleNextQuestion}
+            disabled={answers[currentQuestion] === undefined || isTestLoading}
+            onClick={handleNextQuestion}
             className="group flex items-center gap-3 px-10 py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-400 transition-all active:scale-95 shadow-xl shadow-slate-200 uppercase tracking-widest text-[11px]"
           >
-            {currentQuestion === aptitudeQuestions.length - 1 ? 'See Results' : 'Next Question'}
+            {currentQuestion === 19 ? 'Finish Test' : 'Next Question'}
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
@@ -1098,19 +1125,23 @@ const AdminPanel = ({ adminToken, setAdminToken, currentPage, adminStats, setAdm
 
   const fetchAdminData = async () => {
     try {
-      const [, , logsRes] = await Promise.all([
+      const [statsRes, usersRes, logsRes] = await Promise.all([
         fetch(`${API_URL}/admin/dashboard-stats`),
         fetch(`${API_URL}/admin/users`),
         fetch(`${API_URL}/admin/logs?limit=10`)
       ]);
-      setAdminLogs(await logsRes.json());
-    } catch (e) { console.error("Admin data fetch failed", e); }
+      if (statsRes.ok) setAdminStats(await statsRes.json());
+      if (usersRes.ok) setAdminUsers(await usersRes.json());
+      if (logsRes.ok) setAdminLogs(await logsRes.json());
+    } catch (e) { 
+      console.error("Admin data fetch failed", e); 
+    }
   };
 
   useEffect(() => {
-    if (adminToken && currentPage === 'admin') fetchAdminData();
+    if (adminToken) fetchAdminData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminToken, currentPage]);
+  }, [adminToken]);
 
   if (!adminToken) {
     return (
@@ -1233,6 +1264,16 @@ const CareerCounselingSystem = () => {
   const [nlpResults, setNlpResults] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  // Adaptive Test State
+  const [aptitudeQuestions, setAptitudeQuestions] = useState([]);
+  const [testHistory, setTestHistory] = useState([]); // Array of {correct: bool, difficulty: str}
+  const [isTestLoading, setIsTestLoading] = useState(false);
+  
+  // User Profile State for Aptitude Test
+  const [userAge, setUserAge] = useState('');
+  const [userEducation, setUserEducation] = useState('');
+  const [userProfileSet, setUserProfileSet] = useState(false);
+
   // Admin State
   const [adminToken, setAdminToken] = useState(localStorage.getItem('adminToken') || null);
   const [adminStats, setAdminStats] = useState(null);
@@ -1240,14 +1281,9 @@ const CareerCounselingSystem = () => {
   const [adminLogs, setAdminLogs] = useState([]);
 
   // State for data fetched from backend
-  const [aptitudeQuestions, setAptitudeQuestions] = useState([]);
   const [careerDatabase, setCareerDatabase] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // User Profile State for Aptitude Test
-  const [userAge, setUserAge] = useState('');
-  const [userEducation, setUserEducation] = useState('');
-  const [userProfileSet, setUserProfileSet] = useState(false);
 
   // Compare Careers State
   const [compareList, setCompareList] = useState([]);
@@ -1348,35 +1384,58 @@ const CareerCounselingSystem = () => {
     setIsChatLoading(false);
   };
 
-  // Fetch aptitude questions and career data on component mount
+  // Fetch initial career data on component mount
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCareers = async () => {
       try {
-        setIsLoading(true);
-        const [questionsRes, careersRes] = await Promise.all([
-          fetch(`${API_URL}/aptitude-test/questions`),
-          fetch(`${API_URL}/careers`)
-        ]);
-        const questionsData = await questionsRes.json();
-        const careersData = await careersRes.json();
-
-        if (Array.isArray(questionsData)) {
-          setAptitudeQuestions(questionsData);
-        } else {
-          console.error("Fetched questions is not an array:", questionsData);
-          setAptitudeQuestions([]);
-        }
-
-        setCareerDatabase(careersData);
-
-      } catch (error) {
-        console.error("Failed to fetch initial data:", error);
+        const res = await fetch(`${API_URL}/careers`);
+        const data = await res.json();
+        setCareerDatabase(data);
+      } catch (e) {
+        console.error("Failed to fetch careers:", e);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
+    fetchCareers();
   }, []);
+
+  // Function to start or fetch next adaptive question
+  const fetchNextQuestion = async (updatedHistory = testHistory, currentQuestions = aptitudeQuestions) => {
+    try {
+      setIsTestLoading(true);
+      const res = await fetch(`${API_URL}/aptitude-test/next-question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          answered_ids: currentQuestions.map(q => q.question_id),
+          history: updatedHistory,
+          education: userEducation || 'School'
+        })
+      });
+      const nextQ = await res.json();
+      
+      if (nextQ.done) {
+        handleFinishTest(currentQuestions, updatedHistory);
+      } else {
+        setAptitudeQuestions([...currentQuestions, nextQ]);
+        if (currentQuestions.length > 0) {
+          setCurrentQuestion(currentQuestions.length);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch adaptive question:", e);
+    } finally {
+      setIsTestLoading(false);
+    }
+  };
+
+  // Trigger first question when profile is set
+  useEffect(() => {
+    if (userProfileSet && aptitudeQuestions.length === 0) {
+      fetchNextQuestion([], []);
+    }
+  }, [userProfileSet]);
 
   const handleAnswer = (optionIndex) => {
     setAnswers({
@@ -1386,28 +1445,35 @@ const CareerCounselingSystem = () => {
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestion < aptitudeQuestions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    }
+    const currentQ = aptitudeQuestions[currentQuestion];
+    const isCorrect = answers[currentQuestion] === currentQ.correct_answer;
+    
+    const newHistoryEntry = {
+      correct: isCorrect,
+      difficulty: currentQ.difficulty
+    };
+    
+    const updatedHistory = [...testHistory, newHistoryEntry];
+    setTestHistory(updatedHistory);
+    
+    // Fetch next adaptive question
+    fetchNextQuestion(updatedHistory, aptitudeQuestions);
   };
 
-  const handleFinishTest = async () => {
-    const formattedAnswers = Object.keys(answers).map(qIndex => {
-      const questionId = aptitudeQuestions[qIndex].question_id;
-      return {
-        question_id: questionId,
-        user_answer: answers[qIndex]
-      };
-    });
+  const handleFinishTest = async (finalQuestions = aptitudeQuestions) => {
+    const formattedAnswers = aptitudeQuestions.map((q, idx) => ({
+      question_id: q.question_id,
+      user_answer: answers[idx]
+    }));
 
     try {
-      // First submit the test to get aptitude scores
+      setIsLoading(true);
       const response = await fetch(`${API_URL}/aptitude-test/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           answers: formattedAnswers, 
-          user_id: 1,
+          user_id: user?.id || 1,
           age: userAge,
           education: userEducation
         })
@@ -1415,8 +1481,9 @@ const CareerCounselingSystem = () => {
       const data = await response.json();
       setTestResults(data);
       setShowResults(true);
+      setIsLoading(false); // Show the results screen immediately
 
-      // Then get AI-powered personalized recommendations
+      // Then get AI-powered personalized recommendations in the background
       try {
         const aiRes = await fetch(`${API_URL}/smart-recommendations`, {
           method: 'POST',
@@ -1441,6 +1508,8 @@ const CareerCounselingSystem = () => {
       }
     } catch (error) {
       console.error("Failed to submit test:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1461,25 +1530,28 @@ const CareerCounselingSystem = () => {
 
   // --- GOOGLE OAUTH CALLBACK HANDLER ---
   useEffect(() => {
-    console.log("Checking for auth params in URL:", window.location.search);
-    console.log("Current origin:", window.location.origin);
     const params = new URLSearchParams(window.location.search);
-    if (params.get('auth') === 'success') {
-      console.log("Auth success detected! User info:", {
-        name: params.get('name'),
-        email: params.get('email')
-      });
-      const newUser = {
-        name: params.get('name'),
-        email: params.get('email'),
-        picture: params.get('picture'),
-      };
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
+    const authStatus = params.get('auth');
+    
+    if (authStatus) {
+      console.log("Auth callback detected. Status:", authStatus);
       
-      // Clean the URL (remove query params)
-      const cleanUrl = window.location.origin + window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
+      if (authStatus === 'success') {
+        const newUser = {
+          name: params.get('name'),
+          email: params.get('email'),
+          picture: params.get('picture'),
+        };
+        console.log("Setting user from Google Auth:", newUser);
+        handleAuthSuccess(newUser);
+        
+        // Clean the URL (remove query params)
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } else if (authStatus === 'error') {
+        console.error("Google Authentication failed reported by backend.");
+        alert("Authentication failed. Please try again or use email login.");
+      }
     }
   }, []);
 
@@ -1536,7 +1608,7 @@ const CareerCounselingSystem = () => {
           
           {/* Protected Routes */}
           <Route path="/test" element={user ? (
-            <AptitudeTest isLoading={isLoading} aptitudeQuestions={aptitudeQuestions} showResults={showResults}
+            <AptitudeTest isLoading={isLoading} isTestLoading={isTestLoading} aptitudeQuestions={aptitudeQuestions} showResults={showResults}
               testResults={testResults} currentQuestion={currentQuestion} handleAnswer={handleAnswer}
               answers={answers} handleNextQuestion={handleNextQuestion} handleFinishTest={handleFinishTest}
               resetTest={resetTest} userAge={userAge} setUserAge={setUserAge} userEducation={userEducation}
