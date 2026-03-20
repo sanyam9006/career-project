@@ -1509,8 +1509,12 @@ const CareerCounselingSystem = () => {
     const updatedHistory = [...testHistory, newHistoryEntry];
     setTestHistory(updatedHistory);
     
-    // Fetch next adaptive question
-    fetchNextQuestion(updatedHistory, aptitudeQuestions);
+    // Fetch next adaptive question OR finish if 20 questions reached
+    if (updatedHistory.length >= 20) {
+      handleFinishTest(aptitudeQuestions, updatedHistory);
+    } else {
+      fetchNextQuestion(updatedHistory, aptitudeQuestions);
+    }
   };
 
 
@@ -1525,6 +1529,8 @@ const CareerCounselingSystem = () => {
     setAnswers({});
     setShowResults(false);
     setTestResults(null);
+    setAptitudeQuestions([]);
+    setTestHistory([]);
     setUserProfileSet(false);
     setUserAge('');
     setUserEducation('');
