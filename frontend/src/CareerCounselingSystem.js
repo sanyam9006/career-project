@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { NavLink, useNavigate, Routes, Route, useLocation } from "react-router-dom";
 import { Brain, TrendingUp, Home, TestTube, Users, Menu, X, Shield, Edit3, MapPin, MessageSquare, Send, Briefcase, Mail, Loader, Scale, Sparkles, Zap, Target, ArrowRight, ExternalLink, Activity, Plus, AlertCircle } from "lucide-react";
 
@@ -1401,7 +1401,7 @@ const CareerCounselingSystem = () => {
   }, []);
 
   // Function to start or fetch next adaptive question
-  const fetchNextQuestion = async (updatedHistory = testHistory, currentQuestions = aptitudeQuestions) => {
+  const fetchNextQuestion = useCallback(async (updatedHistory = testHistory, currentQuestions = aptitudeQuestions) => {
     try {
       setIsTestLoading(true);
       const res = await fetch(`${API_URL}/aptitude-test/next-question`, {
@@ -1428,7 +1428,7 @@ const CareerCounselingSystem = () => {
     } finally {
       setIsTestLoading(false);
     }
-  };
+  }, [testHistory, aptitudeQuestions, userEducation, handleFinishTest, setIsTestLoading, setAptitudeQuestions, setCurrentQuestion]);
 
   // Trigger first question when profile is set
   useEffect(() => {
@@ -1460,7 +1460,7 @@ const CareerCounselingSystem = () => {
     fetchNextQuestion(updatedHistory, aptitudeQuestions);
   };
 
-  const handleFinishTest = async (finalQuestions = aptitudeQuestions) => {
+  const handleFinishTest = useCallback(async (finalQuestions = aptitudeQuestions) => {
     const formattedAnswers = aptitudeQuestions.map((q, idx) => ({
       question_id: q.question_id,
       user_answer: answers[idx]
@@ -1511,12 +1511,13 @@ const CareerCounselingSystem = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [aptitudeQuestions, answers, user, userAge, userEducation, userLocation, setIsLoading, setTestResults, setShowResults]);
 
-  const handleAuthSuccess = (userData) => {
+  const handleAuthSuccess = useCallback((userData) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
-  };
+    setIsAuthModalOpen(false);
+  }, []);
 
   const resetTest = () => {
     setCurrentQuestion(0);
