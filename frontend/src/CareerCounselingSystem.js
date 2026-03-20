@@ -1400,6 +1400,59 @@ const CareerCounselingSystem = () => {
     fetchCareers();
   }, []);
 
+  const handleFinishTest = useCallback(async (finalQuestions = aptitudeQuestions) => {
+    const formattedAnswers = aptitudeQuestions.map((q, idx) => ({
+      question_id: q.question_id,
+      user_answer: answers[idx]
+    }));
+
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${API_URL}/aptitude-test/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          answers: formattedAnswers, 
+          user_id: user?.id || 1,
+          age: userAge,
+          education: userEducation
+        })
+      });
+      const data = await response.json();
+      setTestResults(data);
+      setShowResults(true);
+      setIsLoading(false); // Show the results screen immediately
+
+      // Then get AI-powered personalized recommendations in the background
+      try {
+        const aiRes = await fetch(`${API_URL}/smart-recommendations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            age: userAge,
+            education: userEducation,
+            location: userLocation,
+            category_scores: data.results?.category_scores || {},
+            interest_answers: []
+          })
+        });
+        const aiData = await aiRes.json();
+        if (aiData.recommendations) {
+          setTestResults(prev => ({
+            ...prev,
+            aiRecommendations: aiData.recommendations
+          }));
+        }
+      } catch (aiError) {
+        console.log("AI recommendations fallback:", aiError);
+      }
+    } catch (error) {
+      console.error("Failed to submit test:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [aptitudeQuestions, answers, user, userAge, userEducation, userLocation, setIsLoading, setTestResults, setShowResults]);
+
   // Function to start or fetch next adaptive question
   const fetchNextQuestion = useCallback(async (updatedHistory = testHistory, currentQuestions = aptitudeQuestions) => {
     try {
@@ -1460,58 +1513,6 @@ const CareerCounselingSystem = () => {
     fetchNextQuestion(updatedHistory, aptitudeQuestions);
   };
 
-  const handleFinishTest = useCallback(async (finalQuestions = aptitudeQuestions) => {
-    const formattedAnswers = aptitudeQuestions.map((q, idx) => ({
-      question_id: q.question_id,
-      user_answer: answers[idx]
-    }));
-
-    try {
-      setIsLoading(true);
-      const response = await fetch(`${API_URL}/aptitude-test/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          answers: formattedAnswers, 
-          user_id: user?.id || 1,
-          age: userAge,
-          education: userEducation
-        })
-      });
-      const data = await response.json();
-      setTestResults(data);
-      setShowResults(true);
-      setIsLoading(false); // Show the results screen immediately
-
-      // Then get AI-powered personalized recommendations in the background
-      try {
-        const aiRes = await fetch(`${API_URL}/smart-recommendations`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            age: userAge,
-            education: userEducation,
-            location: userLocation,
-            category_scores: data.results?.category_scores || {},
-            interest_answers: []
-          })
-        });
-        const aiData = await aiRes.json();
-        if (aiData.recommendations) {
-          setTestResults(prev => ({
-            ...prev,
-            aiRecommendations: aiData.recommendations
-          }));
-        }
-      } catch (aiError) {
-        console.log("AI recommendations fallback:", aiError);
-      }
-    } catch (error) {
-      console.error("Failed to submit test:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [aptitudeQuestions, answers, user, userAge, userEducation, userLocation, setIsLoading, setTestResults, setShowResults]);
 
   const handleAuthSuccess = useCallback((userData) => {
     setUser(userData);
