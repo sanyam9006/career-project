@@ -4,6 +4,7 @@ python-dotenv
 google-genai
 nltk
 requests
+gunicorn
 # Optional: if using transformers/bart (user mentioned in README)
 # transformers
 # torch

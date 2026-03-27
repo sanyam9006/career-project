@@ -47,3 +47,10 @@ ENV/
 
 # Environment variables
 .env
+
+# Study / Research files (personal, not for GitHub)
+STUDY_GUIDE_Know_Your_Project.md
+Interview_QA_Mastersheet.md
+Research_Paper_CareerAI.md
+Gamma_AI_Prompt.md
+presentation.html
