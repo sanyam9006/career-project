@@ -16,7 +16,6 @@ import random
 from datetime import datetime
 from typing import List, Dict, Optional
 import hashlib
-import pandas as pd
 
 class DatabaseManager:
     """Database management for career counseling system"""
