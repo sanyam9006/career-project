@@ -12,6 +12,7 @@ Original file is located at
 
 import sqlite3
 import json
+import os
 import random
 from datetime import datetime
 from typing import List, Dict, Optional
