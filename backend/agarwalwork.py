@@ -420,6 +420,10 @@ class AptitudeTestManager:
 
     def load_sample_questions(self):
         """Load rich aptitude questions into database (only if not already loaded)"""
+        # Clean up old dummy questions if they exist
+        self.db.cursor.execute("DELETE FROM questions WHERE options LIKE '%Option A%'")
+        self.db.conn.commit()
+
         self.db.cursor.execute("SELECT COUNT(*) FROM questions")
         if self.db.cursor.fetchone()[0] >= 25:
             return  # Already loaded, skip to avoid duplicates
