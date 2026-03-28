@@ -21,7 +21,9 @@ class DatabaseManager:
     """Database management for career counseling system"""
 
     def __init__(self, db_name='career_counseling.db'):
-        self.db_name = db_name
+        # Ensure database is always in the same directory as this file
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.db_name = os.path.join(base_dir, db_name)
         self.conn = None
         self.cursor = None
         self.connect()
@@ -62,12 +64,14 @@ class DatabaseManager:
         ''')
 
         # Test questions table
+        # Questions table (recreated to apply UNIQUE constraint and fresh data)
+        self.cursor.execute("DROP TABLE IF EXISTS questions")
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS questions (
                 question_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 category TEXT NOT NULL,
                 difficulty TEXT,
-                question_text TEXT NOT NULL,
+                question_text TEXT NOT NULL UNIQUE,
                 options TEXT NOT NULL,
                 correct_answer INTEGER NOT NULL,
                 explanation TEXT
@@ -419,14 +423,10 @@ class AptitudeTestManager:
         self.load_sample_questions()
 
     def load_sample_questions(self):
-        """Load rich aptitude questions into database (only if not already loaded)"""
+        """Load rich aptitude questions into database (checks for duplicates)"""
         # Clean up old dummy questions if they exist
         self.db.cursor.execute("DELETE FROM questions WHERE options LIKE '%Option A%'")
         self.db.conn.commit()
-
-        self.db.cursor.execute("SELECT COUNT(*) FROM questions")
-        if self.db.cursor.fetchone()[0] >= 25:
-            return  # Already loaded, skip to avoid duplicates
 
         sample_questions = [
             # --- LOGICAL REASONING ---
