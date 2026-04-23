@@ -28,6 +28,28 @@ def get_gemini_client():
         _gemini_client = genai.Client(api_key=api_key, http_options={'api_version': 'v1'})
     return _gemini_client
 
+def generate_with_fallback(client, contents, config):
+    """Try multiple valid Gemini model strings to avoid 404 versioning errors."""
+    models_to_try = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-latest"
+    ]
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            return client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=config
+            )
+        except Exception as e:
+            last_error = e
+            if "404" not in str(e) and "not found" not in str(e).lower():
+                break # If it's a real error (like 403 or 400), don't keep trying models
+    raise last_error
+
 
 class PersonalityAnalyzer:
     """NLP-based personality and interest analyzer using Google Gemini."""
@@ -72,8 +94,8 @@ Essay: "{essay}"
 
 Respond with ONLY the raw JSON object, no explanation."""
 
-            response = client.models.generate_content(
-                model="gemini-1.5-flash",
+            response = generate_with_fallback(
+                client=client,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.3,
