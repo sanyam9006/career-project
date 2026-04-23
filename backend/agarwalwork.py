@@ -619,15 +619,15 @@ class AptitudeTestManager:
                             "reasons": []
                         }
                     career_scores[title]["total_score"] += points_gained
-                    if percentage >= 60:
-                       career_scores[title]["reasons"].append(f"Strong in {category.replace('_', ' ')}")
+                    if percentage > 0:
+                       career_scores[title]["reasons"].append(f"Based on {category.replace('_', ' ')}")
 
         # Normalize logic: top theoretical score would be roughly 2.8 * 100 for Software Dev (appears in Logical, Abstract)
         # So we cap recommendations percentage at 99%.
         for title, data in career_scores.items():
             if data["reasons"]: # Skip jobs with no strong correlating strengths
                 normalized_match = min(99.0, data["total_score"] / 1.5) # Divided by general scale factor
-                if normalized_match >= 50.0:
+                if normalized_match >= 10.0:
                     recommendations.append({
                         'career_title': title,
                         'match_percentage': round(normalized_match, 1),

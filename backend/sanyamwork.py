@@ -25,7 +25,7 @@ def get_gemini_client():
         if not api_key:
             print("WARNING: GEMINI_API_KEY not set.")
             return None
-        _gemini_client = genai.Client(api_key=api_key)
+        _gemini_client = genai.Client(api_key=api_key, http_options={'api_version': 'v1'})
     return _gemini_client
 
 
