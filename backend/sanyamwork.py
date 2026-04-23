@@ -34,7 +34,9 @@ def generate_with_fallback(client, contents, config):
         "gemini-2.5-flash",
         "gemini-2.0-flash",
         "gemini-1.5-flash",
-        "gemini-1.5-flash-latest"
+        "gemini-1.5-flash-latest",
+        "gemini-pro",
+        "gemini-1.0-pro"
     ]
     last_error = None
     for model_name in models_to_try:
