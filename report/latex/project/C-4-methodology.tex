@@ -1,0 +1,134 @@
+\chapter{Methodology and Team}
+
+\section{Introduction to Agile Methodology}
+
+\paragraph{}
+Agile methodology is a modern way of developing software that focuses on step-by-step progress, teamwork, and continuous improvement. Instead of building the entire project at once, the work is divided into smaller parts called iterations or sprints. Agile methodology is used to build and enhance different modules gradually. This step-by-step approach makes it easier to handle challenges such as refining AI prompt engineering, enhancing the question bank, and ensuring smooth real-time performance of the recommendation engine. Another important aspect of Agile is that it focuses on delivering working parts of the system—such as the aptitude module or the essay analyzer—rather than waiting to complete the entire project at the end. This improves communication within the team, increases efficiency, and makes the CareerAI system more reliable. Due to its flexibility and effectiveness, Agile is particularly suited for projects involving non-deterministic AI outputs like those in CareerAI.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{project/images/agile.png}
+  \caption{Agile Development Model for AI Powered Career Counselling System}
+\end{figure}
+
+\paragraph{}
+The phases followed in Agile model for this project are:
+\vspace{-10pt}
+\begin{enumerate}
+\setlength{\itemsep}{2pt}
+\setlength{\topsep}{2pt}
+\setlength{\parskip}{0pt}
+\setlength{\parindent}{0pt}
+\item \textbf{Requirement Gathering:} 
+In this phase, system requirements were collected by analyzing traditional career counseling gaps. The goal was to develop a system that measures cognitive ability and identifies career interests to reduce barriers to professional guidance.
+
+\item \textbf{Design:}
+System design was created using UML diagrams. The architecture was planned to handle real-time AI analysis via a three-tier structure (React, Flask, SQLite).
+
+\item \textbf{Development (Coding):}
+The system was developed using Python (Flask) for the backend and React.js for the frontend. External APIs such as Google Gemini Flash 1.5 were integrated for zero-shot classification and roadmap generation.
+
+\item \textbf{Testing:}
+Testing was performed to ensure the adaptive logic and AI responses work correctly. Unit testing for the aptitude engine and integration testing for the API pipeline were carried out to verify each module.
+
+\item \textbf{Deployment:}
+The system was deployed on Vercel (Frontend) and Render (Backend), making it accessible for real-time interaction via a public URL.
+
+\item \textbf{Maintenance:}
+Future improvements include increasing the question dataset, adding multi-language support, and improving recommendation accuracy through long-term user feedback.
+
+\end{enumerate}
+\section{Team Members, Roles \& Responsibilities}
+
+% ---------------- MEMBER 1 ----------------
+\begin{table}[H]
+\centering
+\caption{Member-1 Roles and Responsibilities}
+\begin{tabular}{|p{4cm}|p{2.5cm}|p{2.5cm}|p{5cm}|}
+\hline
+\multicolumn{2}{|l|}{MEMBER 1: Sanyam Jain} &
+\multicolumn{2}{|l|}{NAME OF MODULE: AI \& NLP Engine} \\
+\hline
+Functionality & Soft Deadline & Hard Deadline & Details \\
+\hline
+Gemini API Setup & 15/08/25 & 31/08/25 & Setup Google GenAI SDK \\
+\hline
+Prompt Engineering & 01/09/25 & 10/09/25 & Design recommendation prompts \\
+\hline
+Sentiment Analysis & 15/09/25 & 30/09/25 & Integrate NLTK Vader \\
+\hline
+Chatbot Core & 01/10/25 & 20/10/25 & Implement SSE streaming \\
+\hline
+Roadmap Logic & 01/11/25 & 15/11/25 & Design AI roadmap generation \\
+\hline
+Results Intelligence & 20/11/25 & 05/12/25 & Multi-modal recommendation fusion \\
+\hline
+Model Optimization & 10/12/25 & 20/12/25 & Enhance prompt reliability \\
+\hline
+Testing AI Module & 01/01/26 & 10/01/26 & Test recommendation accuracy \\
+\hline
+\end{tabular}
+
+\end{table}
+
+% ---------------- MEMBER 2 ----------------
+\begin{table}[H]
+\centering
+\caption{Member-2 Roles and Responsibilities}
+\begin{tabular}{|p{4cm}|p{2.5cm}|p{2.5cm}|p{5cm}|}
+\hline
+\multicolumn{2}{|l|}{MEMBER 2: Tanishk Agarwal} &
+\multicolumn{2}{|l|}{NAME OF MODULE: Backend \& Database} \\
+\hline
+Functionality & Soft Deadline & Hard Deadline & Details \\
+\hline
+Flask Setup & 15/08/25 & 31/08/25 & Setup Flask backend \\
+\hline
+Database Design & 01/09/25 & 15/09/25 & Design SQLite schema \\
+\hline
+Aptitude Bank & 20/09/25 & 10/10/25 & Curate 120+ questions \\
+\hline
+Adaptive Logic & 15/10/25 & 30/10/25 & Implement difficulty window \\
+\hline
+Auth System & 01/11/25 & 15/11/25 & Setup Google OAuth 2.0 \\
+\hline
+API Development & 20/11/25 & 05/12/25 & Create REST endpoints \\
+\hline
+Admin Panel & 10/12/25 & 20/12/25 & Implement dashboard metrics \\
+\hline
+Deployment (Backend) & 01/01/26 & 10/01/26 & Deploy Flask on Render \\
+\hline
+\end{tabular}
+
+\end{table}
+
+% ---------------- MEMBER 3 ----------------
+\begin{table}[H]
+\centering
+\caption{Member-3 Roles and Responsibilities}
+\begin{tabular}{|p{4cm}|p{2.5cm}|p{2.5cm}|p{5cm}|}
+\hline
+\multicolumn{2}{|l|}{MEMBER 3: Tanishk Singh Shekhawat} &
+\multicolumn{2}{|l|}{NAME OF MODULE: Frontend \& UI/UX} \\
+\hline
+Functionality & Soft Deadline & Hard Deadline & Details \\
+\hline
+React Setup & 15/08/25 & 31/08/25 & Initialize React project \\
+\hline
+UI Layout Design & 01/09/25 & 15/09/25 & Design sidebar and dashboard \\
+\hline
+Component Dev & 20/09/25 & 10/10/25 & Build React components \\
+\hline
+Data Visualization & 15/10/25 & 30/10/25 & Implement Recharts/Charts.js \\
+\hline
+API Integration & 01/11/25 & 15/11/25 & Connect UI with backend APIs \\
+\hline
+State Management & 20/11/25 & 05/12/25 & Manage test and user states \\
+\hline
+UI Testing & 10/12/25 & 20/12/25 & Polish UX and responsiveness \\
+\hline
+Vercel Deployment & 01/01/26 & 10/01/26 & Deploy frontend on Vercel \\
+\hline
+\end{tabular}
+
+\end{table}

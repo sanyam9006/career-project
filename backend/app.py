@@ -15,6 +15,7 @@ from sanyamwork import PersonalityAnalyzer, get_gemini_client
 import json
 import random
 import os
+import re
 import requests as http_requests
 from dotenv import load_dotenv
 from google.genai import types
@@ -132,6 +133,14 @@ def auth_register():
         if not all([username, email, password]):
             return jsonify({"error": "Missing required fields"}), 400
 
+        # Password validation rules
+        if len(password) < 8:
+            return jsonify({"error": "Password must be at least 8 characters long"}), 400
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            return jsonify({"error": "Password must contain at least one special character"}), 400
+        if not re.search(r'\d', password):
+            return jsonify({"error": "Password must contain at least one number"}), 400
+
         user_id = db_manager.add_user(
             username=username,
             email=email,
@@ -201,7 +210,7 @@ def auth_logout():
 
 
 # Initialize your backend modules
-db_manager = DatabaseManager('career_counseling.db')
+db_manager = DatabaseManager('/tmp/career_counseling.db')
 aptitude_manager = AptitudeTestManager(db_manager)
 personality_analyzer = PersonalityAnalyzer()
 print("Backend server initialized successfully!")
@@ -332,7 +341,7 @@ For each career recommendation, respond ONLY with a JSON array of 5 objects. Eac
 Return ONLY the raw JSON array, no explanation, no markdown."""
 
         response = client.models.generate_content(
-            model="gemini-flash-latest",
+            model="gemini-1.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.3,
@@ -415,7 +424,7 @@ def generate_roadmap():
         In each section, give 3-4 concrete, actionable steps tailored to the user's age, background, and location. Be specific about courses, certifications, and projects to build."""
         
         response = client.models.generate_content(
-            model="gemini-flash-latest",
+            model="gemini-1.5-flash",
             contents=prompt,
             config=types.GenerateContentConfig(temperature=0.5, max_output_tokens=2048)
         )
@@ -449,7 +458,7 @@ def chat_coach():
         history_text += "CareerAI Coach:"
         
         response = client.models.generate_content(
-            model="gemini-flash-latest",
+            model="gemini-1.5-flash",
             contents=history_text,
             config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=1024)
         )
@@ -546,7 +555,7 @@ def chat_coach_stream():
     def generate():
         try:
             response_stream = client.models.generate_content_stream(
-                model="gemini-flash-latest",
+                model="gemini-1.5-flash",
                 contents=history_text,
                 config=types.GenerateContentConfig(temperature=0.7, max_output_tokens=1024)
             )

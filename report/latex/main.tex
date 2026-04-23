@@ -1,0 +1,160 @@
+\documentclass[12pt,a4paper]{report}
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\sloppy
+\usepackage{titlesec}
+\usepackage{float}
+\usepackage{placeins}
+\titleformat{\chapter}[display]
+  {\Huge\bfseries}
+  {Chapter \thechapter}
+  {0pt}
+  {\Huge}
+  [\titlerule]
+\let\cleardoublepage\clearpage
+\titlespacing*{\chapter}{0pt}{-10pt}{20pt}
+% Page margins
+\usepackage[top=0.70in,bottom=0.80in,left=0.8in,right=0.80in]{geometry}
+\titleformat{\subsubsection}
+  {\normalfont\bfseries\large}
+  {\thesubsubsection}
+  {1em}
+  {}
+  \titlespacing*{\subsubsection}{0pt}{8pt}{4pt}
+
+\titlespacing*{\section}{0pt}{10pt}{5pt}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{15pt}
+
+\sloppy
+% Graphics and hyperlinks
+\usepackage{graphicx}
+\usepackage[bookmarks,colorlinks=false]{hyperref}
+\hypersetup{pdfborder={0 0 0}}
+
+% Other packages
+\usepackage[final]{pdfpages}
+\usepackage{float}
+\usepackage{array}
+\usepackage{setspace}
+\usepackage{enumerate}
+\usepackage{longtable}
+\usepackage{lipsum}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{pslatex}
+
+\def\figurename{\textbf{Figure }}
+
+% Code listing settings
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{
+language=Java,
+basicstyle=\footnotesize,
+numbers=left,
+numberstyle=\tiny\color{gray},
+stepnumber=1,
+numbersep=5pt,
+backgroundcolor=\color{white},
+showspaces=false,
+showstringspaces=false,
+showtabs=false,
+frame=single,
+rulecolor=\color{black},
+tabsize=2,
+captionpos=b,
+breaklines=true,
+keywordstyle=\color{blue},
+commentstyle=\color{dkgreen},
+stringstyle=\color{mauve}
+}
+
+% Header and footer
+\usepackage{fancyhdr}
+
+\fancypagestyle{plain}{
+\fancyfoot[L]{\emph{Department of Computer Science and Engineering (DS), SKIT, Jaipur}}
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.4pt}
+}
+
+\pagestyle{fancy}
+\fancyhead{} 
+\fancyfoot[LO,LE]{\emph{Department of Computer Science and Engineering (DS), SKIT, Jaipur}}
+\fancyfoot[RO,RE]{\thepage}
+\cfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% Page Border
+\usepackage{pgf}
+\usepackage{pgfpages}
+
+\pgfpagesdeclarelayout{boxed}
+{
+\edef\pgfpageoptionborder{0pt}
+}
+{
+\pgfpagesphysicalpageoptions{
+logical pages=1
+}
+\pgfpageslogicalpageoptions{1}{
+border code=\pgfsetlinewidth{2pt}\pgfstroke,
+border shrink=\pgfpageoptionborder,
+resized width=.95\pgfphysicalwidth,
+resized height=.95\pgfphysicalheight,
+center=\pgfpoint{.5\pgfphysicalwidth}{.5\pgfphysicalheight}
+}
+}
+\pgfpagesuselayout{boxed}
+
+\setlength{\parindent}{1cm}
+
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3}
+
+\renewcommand{\contentsname}{Table of Contents}
+
+% ---------------- DOCUMENT START ----------------
+\begin{document}
+\let\cleardoublepage\clearpage
+\pagenumbering{roman}
+\setcounter{page}{0}
+\input{project/cover.tex}
+\input{project/Declaration.tex}
+\input{project/acknowledgements.tex}
+\input{project/abstract.tex}
+\clearpage
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\input{project/C-1-introduction.tex}
+\input{project/C-2-SRS.tex}
+\input{project/C-3-System-design.tex}
+\input{project/C-4-methodology.tex}
+\input{project/C-5-SystemTesting.tex}
+\input{project/C-6-TestExecutionSummary.tex}
+\vspace{-0.5cm}
+\input{project/C-7-ProjectScreenshots.tex}
+\vspace{-1cm}
+\input{project/C-8-ConclusionFutureScope.tex}
+\input{project/C-9-SDG.tex}
+\vspace{-1cm}
+\input{project/References.tex}
+\input{project/ProjectPoster.tex}
+\vspace{-1cm}
+\input{project/Certificate.tex}
+\vspace{-1cm}
+\input{project/Githublink.tex}
+\end{document}

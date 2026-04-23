@@ -1,0 +1,90 @@
+\chapter{System Design Specification} 
+\section{System Architecture}
+\paragraph{}
+The system architecture provides a high-level structural overview of the AI Powered Career Counselling System (CareerAI), defining its major components, their interactions, and the overall data flow. It explains how different modules work together to achieve real-time cognitive assessment and personalized guidance.
+
+The architecture follows a three-tier modular approach:
+\begin{enumerate}
+    \item \textbf{Presentation Tier (Client):} Built with React.js, this tier handles user interaction, data visualization, and live feedback for the aptitude test and chatbot.
+    \item \textbf{Application Tier (Server):} Powered by Flask, this tier contains the core logic for the adaptive testing engine, NLP processing, and career recommendation fusion.
+    \item \textbf{Data Tier (Storage and AI):} Utilizes a SQLite3 database for persistent storage and external Google Gemini Flash 1.5 APIs for advanced reasoning.
+\end{enumerate}
+
+The system architecture facilitates a smooth flow where input is captured through the browser and passed to the backend. Career essays are processed using Natural Language Processing techniques such as sentiment analysis and zero-shot classification. The processed data is then provided to the machine learning model (Gemini) for accurate career matching.
+
+The final output is converted into meaningful recommendations, match percentages, and interactive 12-month roadmaps. The system also interacts with a central question database and user profile dataset to improve the accuracy of the adaptive engine over time.
+
+ \section{Module Decomposition Description} \paragraph{} It outlines how CareerAI is broken down into smaller, manageable modules. Each module represents a specific functionality, making the system easier to develop, test, and maintain.
+ \begin{itemize}
+     \item \textbf{Assessment Module:} Manages the adaptive aptitude test logic and score calculations.
+     \item \textbf{Intelligence Module:} Handles NLP essay analysis, personality trait detection, and sentiment scoring.
+     \item \textbf{Recommendation Module:} Fuses multiple data points to generate personalized matches via AI.
+     \item \textbf{Career Services Module:} Provides the Career Explorer, Comparison tools, and Roadmap generator.
+     \item \textbf{Interaction Module:} Powers the streaming AI Career Coach chatbot.
+ \end{itemize}
+ \clearpage
+
+ \section{High Level Design Diagrams}
+
+\subsection{Use Case Diagram}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[
+    width=\textwidth,
+    height=0.7\textheight,
+    keepaspectratio
+  ]{project/images/usecase.png}
+  \caption{Use Case Diagram - CareerAI System}
+\end{figure}
+\FloatBarrier
+\clearpage
+
+\subsection{Activity Diagram}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[
+    width=\textwidth,
+    height=0.7\textheight,
+    keepaspectratio
+  ]{project/images/activity.png}
+  \caption{Activity Diagram - Assessment Flow}
+\end{figure}
+\FloatBarrier
+\clearpage
+
+\subsection{Data-Flow Diagram}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[
+    width=\textwidth,
+    height=0.6\textheight,
+    keepaspectratio
+  ]{project/images/data_flow_diagram.png}
+  \caption{Data Flow Diagram (DFD) - Career Recommendation Pipeline}
+\end{figure}
+\FloatBarrier
+\clearpage
+
+\subsection{Class Diagram}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[
+    width=\textwidth,
+    height=0.7\textheight,
+    keepaspectratio
+  ]{project/images/classDiagram.png}
+  \caption{Class Diagram - Backend Architecture}
+\end{figure}
+\FloatBarrier
+\clearpage
+
+\subsection{Sequence Diagram}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[
+    width=\textwidth,
+    height=0.7\textheight,
+    keepaspectratio
+  ]{project/images/seq.png}
+  \caption{Sequence Diagram - AI Recommendation Request}
+\end{figure}\FloatBarrier

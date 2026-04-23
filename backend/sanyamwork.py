@@ -33,7 +33,10 @@ class PersonalityAnalyzer:
     """NLP-based personality and interest analyzer using Google Gemini."""
 
     def __init__(self):
-        self.sia = SentimentIntensityAnalyzer()
+        try:
+            self.sia = SentimentIntensityAnalyzer()
+        except LookupError:
+            self.sia = None
         self.career_categories = [
             "Technology and Engineering", "Healthcare and Medicine", "Business and Finance",
             "Arts and Design", "Education and Teaching", "Science and Research",
@@ -49,7 +52,10 @@ class PersonalityAnalyzer:
             raise ValueError("Essay text cannot be empty.")
 
         # Keep local sentiment analysis (fast & free)
-        sentiment = self.sia.polarity_scores(essay)
+        if self.sia:
+            sentiment = self.sia.polarity_scores(essay)
+        else:
+            sentiment = {'pos': 0.0, 'neu': 1.0, 'neg': 0.0}
 
         client = get_gemini_client()
         if not client:
@@ -67,7 +73,7 @@ Essay: "{essay}"
 Respond with ONLY the raw JSON object, no explanation."""
 
             response = client.models.generate_content(
-                model="gemini-flash-latest",
+                model="gemini-1.5-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.3,
@@ -106,14 +112,20 @@ Respond with ONLY the raw JSON object, no explanation."""
         
         # Determine likely interests based on keywords
         fallback_interests = {"Technology and Engineering": 0.5, "Media and Communication": 0.4}
+        fallback_recs = ["Marketing Specialist", "Event Planner", "HR Coordinator", "Sales Representative", "Operations Analyst"]
+
         if any(w in essay_lower for w in ['code', 'build', 'tech', 'software', 'compute']):
             fallback_interests = {"Technology and Engineering": 0.9, "Science and Research": 0.7}
+            fallback_recs = ["Software Developer", "Digital Architect", "Data Scientist", "Cloud Engineer", "Systems Analyst"]
         elif any(w in essay_lower for w in ['art', 'design', 'creative', 'paint', 'sketch']):
             fallback_interests = {"Arts and Design": 0.9, "Media and Communication": 0.6}
+            fallback_recs = ["Graphic Designer", "UI/UX Designer", "Art Director", "Illustrator", "Animator"]
         elif any(w in essay_lower for w in ['help', 'people', 'social', 'counsel', 'teach']):
             fallback_interests = {"Social Work and Counseling": 0.9, "Education and Teaching": 0.7}
+            fallback_recs = ["Social Worker", "Teacher", "Counselor", "HR Manager", "Community Outreach Coordinator"]
         elif any(w in essay_lower for w in ['business', 'money', 'finance', 'market', 'lead']):
             fallback_interests = {"Business and Finance": 0.9, "Law and Public Service": 0.6}
+            fallback_recs = ["Financial Analyst", "Business Consultant", "Investment Banker", "Project Manager", "Accountant"]
 
         return {
             'sentiment': {
@@ -128,7 +140,7 @@ Respond with ONLY the raw JSON object, no explanation."""
                 'social': 0.8 if 'help' in essay_lower or 'people' in essay_lower else 0.4,
                 'leadership': 0.8 if 'lead' in essay_lower or 'manage' in essay_lower else 0.4
             },
-            'career_recommendations': ["Software Developer", "Digital Architect", "Product Designer", "Data Scientist", "Innovation Manager"],
+            'career_recommendations': fallback_recs,
             'source': 'simulated'
         }
 

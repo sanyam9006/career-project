@@ -1,0 +1,89 @@
+\chapter{Test Execution Summary}
+
+\paragraph{}Execution Test Summary Report is an overall view of Testing Process from start to end. Test Plan comes at the starting of project while Test Summary Report comes at the end of the testing process. This report is given to the client for his understanding purpose. 
+The Test Summary Report contents are :\\
+1. Test Case ID generated \\
+2. Total number of resources consumed \\
+3. Passed Test Cases \\
+4. Failed Test Cases \\
+5. Status of Test Cases \\
+
+Note : This chapter includes 21 test cases and an explanation of each test case. Testing was performed using tools like \textbf{React Testing Library}, \textbf{PyTest}, and \textbf{Manual Sandbox Verification}.
+
+\section{Detailed Test Case Explanations}
+\begin{enumerate}
+    \item \textbf{User Authentication}: Verifies that the Google OAuth flow correctly redirects and logs in the user.
+    \item \textbf{Session Persistence}: Ensures that refreshing the browser does not log the user out.
+    \item \textbf{Aptitude Load}: Checks if the 20-question bank loads and resets correctly for new trials.
+    \item \textbf{Choice Selection}: Confirms that clicking an option highlights it and enables the 'Next' button.
+    \item \textbf{Adaptive Logic (Increase)}: Verifies difficulty level increases after 5 consecutive correct answers.
+    \item \textbf{Adaptive Logic (Decrease)}: Verifies difficulty level decreases after 5 consecutive incorrect answers.
+    \item \textbf{Category Distribution}: Ensures all 5 aptitude categories are represented in the 20 questions.
+    \item \textbf{Progress Tracking}: Confirms the progress bar increments correctly after each question.
+    \item \textbf{Result Aggregation}: Tests if the final score calculation matches the backend logic.
+    \item \textbf{Essay NLP Entry}: Checks if the career essay input field accepts and stores up to 500 words.
+    \item \textbf{Sentiment Mapping}: Verifies that NLTK Vader scores are correctly translated into user confidence labels.
+    \item \textbf{Personality Extraction}: Confirms the NLP module identifies personality traits from essay text.
+    \item \textbf{Recommendation Engine}: Fuses aptitude and interest data to produce 5 career matches.
+    \item \textbf{Roadmap Generation}: Verifies the creation of a chronological 12-month development plan.
+    \item \textbf{Skill Mapping}: Checks if the recommended careers include relevant, market-standard skills.
+    \item \textbf{Comparison Tool}: Tests the side-by-side comparison of two different career paths.
+    \item \textbf{Career Explorer}: Ensures users can search and filter the career database by name or domain.
+    \item \textbf{Chatbot Initiation}: Confirms the 'AI Career Coach' window opens on button click.
+    \item \textbf{Streaming Response}: Verifies that the chatbot provides real-time streaming text (SSE).
+    \item \textbf{Admin Security}: Confirms that the admin dashboard is inaccessible to regular users (401).
+    \item \textbf{Database Integrity}: Ensures all user records and test scores are serialized correctly to SQLite.
+\end{enumerate}
+
+\begin{table}[H]
+\begin{center}
+ \begin{tabular}{| m{1cm} | m{1.5cm} | m{7em}| m{4em}| m{5em} |} 
+ \hline
+ S.No & Test Case Id & Test Case Description & Test Case Status & No. of Resources Consumed \\
+ \hline
+ 1 & TC-AUTH-01 & Google OAuth Sign-in & Passed & 1 Dev Unit \\ 
+ \hline
+ 2 & TC-CORE-02 & Session Persistence & Passed & 1 Dev Unit \\
+ \hline
+ 3 & TC-APT-03 & Question Load & Passed & 1 DB Unit \\
+ \hline
+ 4 & TC-APT-04 & Dynamic Difficulty Up & Passed & 2 Logic Units \\
+ \hline
+ 5 & TC-APT-05 & Dynamic Difficulty Down & Passed & 2 Logic Units \\
+ \hline
+ 6 & TC-APT-06 & Category Balance Check & Passed & 1 Logic Unit \\
+ \hline
+ 7 & TC-APT-07 & Final Score Calculation & Passed & 1 Logic Unit \\
+ \hline
+ 8 & TC-NLP-08 & Essay Text Submission & Passed & 1 API Unit \\
+ \hline
+ 9 & TC-NLP-09 & Sentiment Analysis & Passed & 1 AI Unit \\
+ \hline
+ 10 & TC-NLP-10 & Domain Classification & Passed & 1 AI Unit \\
+ \hline
+ 11 & TC-REC-11 & Match Percentage Logic & Passed & 2 AI Units \\
+ \hline
+ 12 & TC-REC-12 & Recommendation Reason & Passed & 2 AI Units \\
+ \hline
+ 13 & TC-SERV-13 & 12 Month Roadmap Gen & Passed & 1 Logic Unit \\
+ \hline
+ 14 & TC-SERV-14 & Skill Mismatch Detection & Passed & 1 Logic Unit \\
+ \hline
+ 15 & TC-CHAT-15 & SSE Streaming Response & Passed & 2 API Units \\
+ \hline
+ 16 & TC-UI-16 & Responsive Dashboard & Passed & 1 UI Unit \\
+ \hline
+ 17 & TC-UI-17 & Chart Rendering & Passed & 1 UI Unit \\
+ \hline
+ 18 & TC-ADM-18 & Auth Guard Check & Passed & 1 Sec Unit \\
+ \hline
+ 19 & TC-DB-19 & SQLite Serialization & Passed & 1 DB Unit \\
+ \hline
+ 20 & TC-PERF-20 & <1s Response Time & Passed & 1 Sys Unit \\
+ \hline
+ 21 & TC-SEC-21 & JWT Token Valid & Passed & 1 Sec Unit \\
+ \hline
+\end{tabular}
+\caption{Overall Test Execution Summary for CareerAI}
+\end{center}
+\end{table}

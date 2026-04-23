@@ -1,0 +1,39 @@
+\chapter{Software Requirement Specification}
+\section{{Overall Description}}
+{}The AI Powered Career Counselling System (CareerAI) is an interactive web-based platform designed to assist students and self-learners in discovering personalised career paths. The system captures cognitive data through an adaptive aptitude test and career interests through NLP essay analysis, processes them using Large Language Models (LLMs) and sentiment analysis techniques, and translates them into actionable career recommendations and 12-month roadmaps. This enables informed decision-making in educational and professional environments.
+
+
+\subsection{{Product Perspective}}
+
+\subsubsection{{System Interfaces}}
+\paragraph{}{The System Interfaces describe how the AI Career Counselling System interacts with external components, including user-facing browsers, the Flask application server, the SQLite database layer, and external AI services like Google Gemini Flash 1.5 and Google OAuth 2.0. These interfaces are critical for ensuring secure authentication and real-time generation of results.}
+
+\subsubsection{{User Interfaces}}
+{}{The user interface of CareerAI is designed to be a premium, responsive Single Page Application (SPA), allowing users to navigate through assessments and results seamlessly. It provides a platform where users can perform cognitive tests and submit career essays, receiving immediate feedback in the form of interactive match percentages and reasoning cards, with additional AI-driven chat support.
+
+The interface includes a persistent sidebar for navigation, a dynamic assessment engine with progress tracking, and a results dashboard featuring data visualization charts. A well-designed user interface ensures that students with varying technical knowledge can explore career options easily.\newline
+By providing real-time recommendations and clear visualizations of aptitude strengths, the interface helps bridge the gap between human potential and market opportunities. Additionally, it serves as a career planning tool for those who want to build a long-term development roadmap. The design emphasizes a "Glassmorphism" aesthetic with responsive layouts, making the system effective across desktop and mobile devices.}
+
+\subsubsection{{Hardware Interfaces}}
+{}{The hardware interface of CareerAI defines the physical requirements for accessing the cloud-hosted platform. The system primarily relies on any internet-enabled device, such as a laptop, smartphone, or tablet, capable of running a modern web browser. The processing is offloaded to the Render (Backend) and Vercel (Frontend) cloud environments, which provide the computational power for the AI and database operations.
+
+The user's device serves as the input/output interface, capturing text data and displaying the web dashboard. The backend server processes this input to calculate adaptive difficulty and generate recommendations. Proper internet connectivity is the primary requirement to ensure low-latency communication with the Gemini AI engine for real-time analysis. Overall, the hardware interface ensures that the system is accessible to any student with basic computing hardware and an internet connection.}
+
+\subsubsection{{Software Interfaces}}
+{}{The software interface of CareerAI defines how the system interacts with various frameworks and libraries to deliver career guidance. The system is built on a React.js 18 frontend and a Flask (Python) backend. Image and chart libraries, such as Recharts, are used to visualize user performance and category scores.
+
+Machine learning through the Google Gemini Flash 1.5 API is employed to classify career interests based on unstructured essay text, while the NLTK Vader library performs localized sentiment scoring to gauge user confidence. The graphical user interface utilizes modern CSS and Lucide Icons to enable interaction between the user and the recommendations engine. Additionally, the system uses an SQLite3 database to save user trials, question banks, and activity logs. These software interfaces work together to ensure a robust, full-stack career counseling experience.}
+
+\subsubsection{{Functional Requirement}}
+{}{The functional requirements of CareerAI define the specific operations the system must perform to provide accurate guidance. The system must deliver an adaptive aptitude test that adjusts difficulty dynamically based on a user's rolling performance window. It should provide real-time NLP analysis of career essays to detect interests across 9 core domains and personality traits.
+
+The system must allow users to securely authenticate via Google OAuth 2.0, generate personalized 12-month roadmaps, and interact with an AI Career Coach chatbot featuring streaming responses. It should preprocess aptitude results to calculate category-wise strengths and classify the user's MBTI personality type. The system must also provide an admin dashboard for monitoring user activity and monitoring API health. Overall, the functional requirements ensure that users receive immediate, data-driven career counseling.}
+
+\subsubsection{{User Characteristics}}
+{}{The intended users of CareerAI include high school students (ages 16-18), undergraduate graduates planning their next steps, and professional career switchers seeking guidance. Users are expected to have basic internet literacy and the ability to interact with web-based forms and quizzes. The system is designed to be intuitive so that users with no prior career counseling experience can understand their results and roadmap without professional assistance. By providing clear match percentages and simple "Next Steps," the system accommodates users at various stages of their educational journey.}
+
+\subsubsection{{Constraints}}
+{}{CareerAI is subject to certain constraints that influence its scale and latency. The system must operate with **low latency**, as career recommendations are expected to generate in under one second. Its accuracy depends on **API connectivity**, as the core reasoning engine relies on the Google Gemini API. Initially, the essay analysis accepts only **English text**, limiting its use for regional language speakers. The system relies on a **predefined question bank** of 120+ items, which must be accurately categorized to ensure psychometric validity. Additionally, the SQLite database is a **file-based system**, which may present concurrency limits as the user base grows significantly. These constraints guide the development while prioritizing a premium user experience.}
+
+\subsubsection{{Assumption and Dependencies}}
+{}{CareerAI operates under several assumptions that influence its reliability. It is assumed that users will provide honest responses to aptitude questions and authentic essays for the interest analysis. The system depends on the **Google Gemini Flash 1.5 API** for generating zero-shot recommendations, and its accuracy relies on the quality of the "system-level" prompts designed by the developers. Continuous system performance depends on the **uptime of Render and Vercel** cloud services. The system also depends on libraries such as `flask-cors` for cross-origin communication and `google-genai` for LLM interaction. If usage exceeds free-tier API limits, the system relies on a **rule-based fallback** to provide basic career mapping. These assumptions define the boundaries of the system's intelligent features.}

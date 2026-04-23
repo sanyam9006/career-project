@@ -54,3 +54,25 @@ Interview_QA_Mastersheet.md
 Research_Paper_CareerAI.md
 Gamma_AI_Prompt.md
 presentation.html
+
+# LaTeX Build Files
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.idx
+*.ilg
+*.ind
+*.lof
+*.lot
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo

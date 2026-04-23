@@ -1,0 +1,160 @@
+\sloppy
+\chapter{System Testing}
+\section{Introduction}
+{}System testing for the AI Powered Career Counselling System (CareerAI) involves evaluating the complete application to ensure it meets the functional and non-functional requirements. The goal is to verify that the system accurately recognizes cognitive strengths and career interests to provide the correct recommendations in real-time under different user interactions.
+
+Testing begins with unit testing, where individual modules such as the adaptive aptitude engine, NLP essay processor, recommendation fusion logic, and career roadmap generator are tested separately to confirm their correctness. This is followed by integration testing, which ensures that all modules work together seamlessly, such as verifying that user inputs captured in the React frontend are correctly processed by the Flask backend, classified by the Google Gemini model, and the resulting interactive roadmaps are displayed on the user dashboard.
+\section{Types of Testing Performed}
+\subsection{Unit Testing}
+{}Unit testing in the CareerAI system focuses on checking each part of the software separately to make sure everything is working properly. Instead of testing the full system at once, each module is tested individually before combining them together.
+
+The main modules tested include the adaptive aptitude engine, essay classifier, sentiment analyzer, and chatbot. In the aptitude module, the system is checked to ensure that the 4-tier difficulty logic adjusts correctly based on rolling accuracy windows. The NLP classifier is tested to verify proper interest domain mapping (e.g., Technology, Healthcare) and personality trait detection. For sentiment analysis, the system is examined to ensure that the NLTK Vader compound scores are accurately mapped to user confidence levels. Finally, the chatbot module is tested to confirm that the streaming logic provides continuous, meaningful career coaching responses.
+
+Overall, unit testing helps in finding and fixing logic errors at an early stage. This improves the reliability of each module and ensures that when all parts are integrated, the complete system works smoothly and provides hyper-personalized career guidance. 
+\subsection{Integration Testing}
+{}Integration testing in CareerAI focuses on ensuring that all individual modules—such as the React UI, Flask API, SQLite database, and Google Gemini API—work together properly as a complete system. The main aim is to check whether the data flows correctly between these modules and whether the system performs recommendations in under one second.
+
+First, the integration between the Frontend results and the Backend API is tested. This step ensures that the aptitude answers and essay text are correctly passed to the Flask server. It verifies that each request is properly authorized via JWT tokens and that user state is maintained before moving to the analysis stage. Any delay in API response or incorrect data parsing is carefully checked.
+
+Next, the connection between the Backend logic and the Database is examined. Here, testing ensures that question banks are correctly loaded based on difficulty and that test results are accurately saved to the SQLite tables. The system is checked to confirm that important features such as previous test history and user profile data are accurately retrieved and represent the actual user context.
+
+After that, the integration between the Intelligence module and the Google Gemini API is tested. This step verifies that the complex recommendation prompts are correctly fed into the LLM and that career matches are generated accurately based on the fused data. It also ensures that any API rate limits or timeout errors are properly handled via fallback rule-based logic.
+
+Finally, the link between the Recommendation engine and the Dashboard display is evaluated. This includes checking whether the recognized career matches are correctly shown in the user interface with accurate match percentages and reasoning cards. The system is also tested for real-time responsiveness and roadmap generation, ensuring that the displayed 12-month plans match the user’s cognitive profile. Additionally, session management features are checked to ensure they do not affect the overall performance of the platform.
+\subsection{ System Testing}
+\paragraph{}System testing is performed on the complete integrated system to validate overall behavior and functionality.\\
+\textbf{Explain with respect to your Project}
+
+In this project, system testing is carried out on the complete CareerAI platform to ensure that all modules work together correctly. The system is tested using diverse user profiles (e.g., a high school student vs. a career switcher) to verify whether the engine captures strengths accurately and the AI correctly processes and maps them to industry demands.
+
+The testing ensures that the final recommendations are displayed correctly on the dashboard without significant delay. Different conditions such as variable network speeds, inconsistent user essays, and API outages are also tested to evaluate system resilience. Errors like incorrect roadmap monthly sequencing or chatbot disconnection are identified and resolved. This ensures that the system works efficiently and reliably in providing life-altering career advice to students.
+\clearpage
+\section{Test Cases}
+
+%------------------- TABLE 1 -------------------
+\begin{table}[htbp]
+\begin{center}
+\caption{Test Case table for Module (Aptitude Engine)}
+ \begin{tabular}{| m{1cm} | m{4cm} | m{2 cm}| m{3cm}|m{3cm}| } 
+\hline
+\multicolumn{3}{|l|}{NAME OF MODULE: Aptitude Engine}&
+\multicolumn{2}{|l|}{TESTING TOOL : Python + PyTest}\\[0.8cm]
+\hline
+\textbf{Test ID} &\textbf{Test Description} & \textbf{Input Data} & \textbf{Expected Output} & \textbf{Actual Output} \\ 
+\hline
+TC1 & Engine start check & Fetch Q & Q1 Load & Success \\[1.25cm]
+\hline
+TC2 & Difficulty Up & 5/5 Correct & Tier Upgrade & Upgraded \\[1.25cm]
+\hline
+TC3 & Difficulty Down & 0/5 Correct & Tier Downgrade & Downgraded \\[1.25cm]
+\hline
+TC4 & Question Limit & Q20 Finish & Test End & Terminated \\[1.25cm]
+\hline
+TC5 & Category Balance & 20 Questions & All categories & Balanced \\[1.25cm]
+\hline
+TC6 & Score Calculation & 15 Correct & Score = 75\% & 75\% \\[1.25cm]
+\hline
+TC7 & Response Save & User Choice & Save to DB & Saved \\[1.25cm]
+\hline
+TC8 & Handle Timeout & Slow Network & Catch error & Handled \\[1.25cm]
+\hline
+\end{tabular}
+
+\end{center}
+\end{table}
+\clearpage
+%------------------- TABLE 2 -------------------
+\begin{table}[htbp]
+\begin{center}
+\caption{Test Case table for Module (NLP Analysis)}
+ \begin{tabular}{| m{1cm} | m{4cm} | m{2 cm}| m{3cm}|m{3cm}| } 
+\hline
+\multicolumn{3}{|l|}{NAME OF MODULE: NLP Analysis}&
+\multicolumn{2}{|l|}{TESTING TOOL : Python + NLTK}\\[0.8cm]
+\hline
+\textbf{Test ID} &\textbf{Test Description} & \textbf{Input Data} & \textbf{Expected Output} & \textbf{Actual Output} \\ 
+\hline
+TC1 & Sentiment Val & Happy Text & Pos compound & Correct \\[1.25cm]
+\hline
+TC2 & Domain Classify & "I like code" & Technology & Tech \\[1.25cm]
+\hline
+TC3 & Genre Detect & Free Essay & Top Keywords & Detected \\[1.25cm]
+\hline
+TC4 & Trait Detect & Introvert text & Personality ID & Success \\[1.25cm]
+\hline
+TC5 & Empty Essay & "" & "Too short" & Validated \\[1.25cm]
+\hline
+TC6 & LLM Output & Long text & JSON Response & Valid JSON \\[1.25cm]
+\hline
+TC7 & Language Guard & Non-English & Warning & Handled \\[1.25cm]
+\hline
+TC8 & Performance & 500 words & <2s Process & 1.5s \\[1.25cm]
+\hline
+\end{tabular}
+
+\end{center}
+\end{table}
+\clearpage
+%------------------- TABLE 3 -------------------
+\begin{table}[htbp]
+\begin{center}
+\caption{Test Case table for Module (Recommendation Fusion)}
+ \begin{tabular}{| m{1cm} | m{4cm} | m{2 cm}| m{3cm}|m{3cm}| } 
+\hline
+\multicolumn{3}{|l|}{NAME OF MODULE: Recommendation Fusion}&
+\multicolumn{2}{|l|}{TESTING TOOL : Gemini 1.5 Pro}\\[0.8cm]
+\hline
+\textbf{Test ID} &\textbf{Test Description} & \textbf{Input Data} & \textbf{Expected Output} & \textbf{Actual Output} \\ 
+\hline
+TC1 & Fusion check & Apt + Essay & Unified prompt & Success \\[1.25cm]
+\hline
+TC2 & Match Accuracy & High Math & STEM Careers & STEM Match \\[1.25cm]
+\hline
+TC3 & Conflict Resol & Apt vs Essay & Reasoning provided & Reasoned \\[1.25cm]
+\hline
+TC4 & Recommendation & Fusion Data & 5 Careers & 5 Careers \\[1.25cm]
+\hline
+TC5 & Reliability & Repeat input & Same top 3 & Consistent \\[1.25cm]
+\hline
+TC6 & Skill mapping & Career ID & Skills list & Mapped \\[1.25cm]
+\hline
+TC7 & Fallback Check & API Down & Default results & Fallback ok \\[1.25cm]
+\hline
+TC8 & Response time & Fusion API & <1s & 0.8s \\[1.25cm]
+\hline
+\end{tabular}
+
+\end{center}
+\end{table}
+\clearpage
+%------------------- TABLE 4 -------------------
+\begin{table}[htbp]
+\begin{center}
+\caption{Test Case table for Module (User Services)}
+ \begin{tabular}{| m{1cm} | m{4cm} | m{2 cm}| m{3cm}|m{3cm}| } 
+\hline
+\multicolumn{3}{|l|}{NAME OF MODULE: User Services}&
+\multicolumn{2}{|l|}{TESTING TOOL : React Testing Lib}\\[0.8cm]
+\hline
+\textbf{Test ID} &\textbf{Test Description} & \textbf{Input Data} & \textbf{Expected Output} & \textbf{Actual Output} \\ 
+\hline
+TC1 & Roadmap Gen & Engineering & 12 Month Plan & Success \\[1.25cm]
+\hline
+TC2 & Chatbot Reply & Career Q & AI Stream & Streamed \\[1.25cm]
+\hline
+TC3 & Auth Redirect & Guest & Link to Login & Handled \\[1.25cm]
+\hline
+TC4 & Region Logic & India & IN-spec Salary & IN salaries \\[1.25cm]
+\hline
+TC5 & Compare Tool & 2 Careers & Diff table & Success \\[1.25cm]
+\hline
+TC6 & MBTI Mapping & Essay traits & Profile type & ENTJ/etc \\[1.25cm]
+\hline
+TC7 & Admin Stats & Load Dashboard & Count stats & Correct cts \\[1.25cm]
+\hline
+TC8 & Session Persistent & Refresh & Stay logged & Persisted \\[1.25cm]
+\hline
+\end{tabular}
+
+\end{center}
+\end{table}
